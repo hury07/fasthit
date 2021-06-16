@@ -1,0 +1,1 @@
+from fasthit.landscapes.gb1 import GB1

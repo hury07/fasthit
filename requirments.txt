@@ -1,0 +1,8 @@
+biopython==1.79
+gpytorch==1.4.2
+numpy==1.19.2
+scikit-learn==0.24.2
+scipy==1.6.2
+skorck==0.10.0
+torch==1.9.0
+tqdm==4.61.1
