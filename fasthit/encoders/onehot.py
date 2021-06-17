@@ -1,19 +1,16 @@
 ###
-import numpy as np
-from typing import List, Optional
+from typing import List
 
+import numpy as np
+
+import fasthit
 from fasthit.utils import sequence_utils as s_utils
 
-class OneHot(object):
-    def __init__(self, alphabet: str) -> None:
-        super().__init__()
-        self.alphabet = alphabet
+class OneHot(fasthit.Encoder):
+    def __init__(self, alphabet: str):
+        super().__init__("onehot", alphabet, len(alphabet))
 
-    def encode(
-        self,
-        sequences: List[str],
-        batch_size: Optional[int] = None
-    ) -> np.array:
+    def encode(self, sequences: List[str]) -> np.array:
         ### [bsz, seq_length, n_features]
         return np.array(
             [s_utils.string_to_one_hot(seq, self.alphabet) for seq in sequences],

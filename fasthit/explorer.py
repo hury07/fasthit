@@ -26,6 +26,7 @@ class Explorer(abc.ABC):
     def __init__(
         self,
         name: str,
+        encoder: fasthit.Encoder,
         model: fasthit.Model,
         rounds: int,
         expmt_queries_per_round: int,
@@ -53,6 +54,7 @@ class Explorer(abc.ABC):
 
         """
         self.name = name
+        self.encoder = encoder
         self.model = model
         self.training_data_size = training_data_size
 
@@ -165,10 +167,9 @@ class Explorer(abc.ABC):
         for r in range_iterator(1, self.rounds + 1):
             round_start_time = time.time()
 
-            self.model.train(
-                training_data["sequence"].to_numpy(),
-                training_data["true_score"].to_numpy(),
-            )
+            encodings = self.encoder.encode(training_data["sequence"].to_numpy())
+            labels = training_data["true_score"].to_numpy()
+            self.model.train(encodings, labels)
 
             measured_data, seqs, preds = self.propose_sequences(measured_data, landscape)
             true_score = landscape.get_fitness(seqs)

@@ -5,39 +5,23 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-import fasthit
-from fasthit import encoders
-
-
 from .torch_model import TorchModel
 
 
 class CNN(TorchModel):
     def __init__(
         self,
-        seq_len: int,
+        input_features: int,
         num_filters: int,
         hidden_size: int,
         kernel_size: int,
-        alphabet: str,
-        encoding: str = "onehot",
-        landscape: Optional[fasthit.Landscape] = None,
         name: str = None,
         **new_fit_params,
     ):
         """Create the CNNModel."""
-        n_features = len(alphabet)
-        if encoding == "georgiev":
-            n_features = encoders.Georgiev.n_features
-        elif encoding in ["transformer", "unirep", "trrosetta"]:
-            n_features = encoders.TAPE.encodings.loc[encoding, "n_features"].item()
-        elif encoding in ["esm-1b", "esm-msa-1"]:
-            n_features = encoders.ESM.encodings.loc[encoding, "n_features"].item()
-        else:
-            pass
 
         model = CNNModel(
-            n_features,
+            input_features,
             num_filters,
             hidden_size,
             kernel_size,
@@ -58,9 +42,6 @@ class CNN(TorchModel):
         super().__init__(
             name,
             model,
-            alphabet,
-            encoding=encoding,
-            landscape=landscape,
             **fit_params,
         )
 

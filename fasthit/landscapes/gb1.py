@@ -1,12 +1,11 @@
 """Define GB1 landscape and problem registry."""
 import os
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
 
 import fasthit
-from fasthit.types import SEQUENCES_TYPE
 
 class GB1(fasthit.Landscape):
     """
@@ -73,7 +72,7 @@ class GB1(fasthit.Landscape):
             self.template[i] = "X"
         """
 
-    def _fitness_function(self, sequences: SEQUENCES_TYPE) -> np.ndarray:
+    def _fitness_function(self, sequences: List[str]) -> np.ndarray:
         return np.array([self.sequences[seq] for seq in sequences])
 
 

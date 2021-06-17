@@ -2,8 +2,7 @@
 import abc
 
 import numpy as np
-
-from fasthit.types import SEQUENCES_TYPE
+from typing import List, Union
 
 
 class Landscape(abc.ABC):
@@ -22,10 +21,10 @@ class Landscape(abc.ABC):
         self.name = name
 
     @abc.abstractmethod
-    def _fitness_function(self, sequences: SEQUENCES_TYPE) -> np.ndarray:
+    def _fitness_function(self, sequences: Union[List[str], np.ndarray]) -> np.ndarray:
         pass
 
-    def get_fitness(self, sequences: SEQUENCES_TYPE) -> np.ndarray:
+    def get_fitness(self, sequences: Union[List[str], np.ndarray]) -> np.ndarray:
         """
         Score a list/numpy array of sequences.
 

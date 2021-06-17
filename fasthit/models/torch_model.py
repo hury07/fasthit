@@ -1,14 +1,11 @@
 """Define the base PytorchModel class."""
-from typing import Optional#, Callable
+#from typing import Callable
 
 import numpy as np
 import torch.nn as nn
 from skorch import NeuralNet
 
 import fasthit
-from fasthit import encoders
-from fasthit.types import SEQUENCES_TYPE
-from fasthit.utils import sequence_utils as s_utils
 
 
 class TorchModel(fasthit.Model):
@@ -18,9 +15,6 @@ class TorchModel(fasthit.Model):
         self,
         name: str,
         model: nn.Module,
-        alphabet: str,
-        encoding: str = "onehot",
-        landscape: Optional[fasthit.Landscape] = None,
         #custom_train_function: Callable[[torch.Tensor, torch.Tensor], None] = None,
         #custom_predict_function: Callable[[torch.Tensor], np.ndarray] = None,
         **fit_params,
@@ -41,24 +35,6 @@ class TorchModel(fasthit.Model):
         """
         super().__init__(name)
 
-        self.alphabet = alphabet
-        self.batch_size = fit_params["batch_size"]
-        # Encoding strategy
-        if encoding == "onehot":
-            self.encoder = encoders.OneHot(self.alphabet)
-        elif encoding == "georgiev":
-            self.encoder = encoders.Georgiev()
-        elif encoding in ["transformer", "unirep", "trrosetta"]:
-            self.encoder = encoders.TAPE(
-                landscape.name, self.alphabet, encoding, landscape.wt, landscape.combo_python_inds
-            )
-        elif encoding in ["esm-1b", "esm-msa-1"]:
-            self.encoder = encoders.ESM(
-                landscape.name, self.alphabet, encoding, landscape.wt, landscape.combo_python_inds
-            )
-        else:
-            raise NotImplementedError(f"Unknown encoding strategy: {encoding}.")
-
         self.model = NeuralNet(
             model,
             train_split=None,
@@ -67,17 +43,18 @@ class TorchModel(fasthit.Model):
         ).initialize()
 
     def train(
-        self, sequences: SEQUENCES_TYPE, labels: np.ndarray, verbose: bool = False
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        verbose: bool = False,
     ):
         """Train Pytorch model."""
-        encodings = self.encoder.encode(sequences, batch_size=self.batch_size)
-        labels = np.expand_dims(labels, axis=1).astype(np.float32)
+        y = np.expand_dims(y, axis=1).astype(np.float32)
 
         self.model.set_params(verbose=verbose)
-        self.model.fit(encodings, labels)
+        self.model.fit(X, y)
 
-    def _fitness_function(self, sequences):
-        encodings = self.encoder.encode(sequences, batch_size=self.batch_size)
+    def _fitness_function(self, X: np.ndarray):
         return np.nan_to_num(
-            self.model.predict(encodings).squeeze(axis=1)
+            self.model.predict(X).squeeze(axis=1)
         )

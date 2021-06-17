@@ -1,19 +1,22 @@
 ###
-import math
 import os
 import subprocess
+from typing import List, Optional
+
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
+import math
 import numpy as np
 import pandas as pd
 import torch
-from typing import List, Optional
+
+import fasthit
 
 _filedir = os.path.dirname(os.path.abspath(__file__))
 
-class ESM(object):
+class ESM(fasthit.Encoder):
     encodings = pd.DataFrame(
         {
             "encoder": ["esm-1b", "esm-msa-1"],
@@ -25,30 +28,32 @@ class ESM(object):
 
     def __init__(
         self,
-        protein_name: str,
         alphabet: str,
         encoding: str,
         wt_seq: str,
         target_python_inds: int,
+        protein_name: str,
+        batch_size: int = 256,
         output: str = os.getcwd(),
-    ) -> None:
-        super().__init__()
-        self.protein_name = protein_name
-        self.alphabet = alphabet
-        
+    ):
         assert encoding in ["esm-1b", "esm-msa-1"]
+        name = f"esm_{encoding}"
+
+        self.protein_name = protein_name
         self.encoding = self.encodings.loc[encoding]
-        
         self.wt_seq = wt_seq
         self.target_python_inds = target_python_inds
         self.n_positions_combined = len(target_python_inds)
         self.output = output
+
+        super().__init__(
+            name,
+            alphabet,
+            self.encoding["n_features"],
+            batch_size=batch_size,
+        )
     
-    def encode(
-        self,
-        sequences: List[str],
-        batch_size: Optional[int] = None
-    ) -> np.array:
+    def encode(self, sequences: List[str]) -> np.array:
         ### [bsz, seq_length, n_features]
         """
         Encodes a given combinatorial space using tape.
@@ -57,7 +62,7 @@ class ESM(object):
         of batches.
         """
         # Build fasta files
-        n_batches = math.ceil(len(sequences) / batch_size)
+        n_batches = math.ceil(len(sequences) / self.batch_size)
         fasta_filenames = self._build_fastas(sequences, n_batches)
         # Create a list to store the names of the raw embedding files
         extracted_embeddings = [None for _ in range(n_batches)]

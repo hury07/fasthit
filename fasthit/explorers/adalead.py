@@ -24,19 +24,20 @@ class Adalead(fasthit.Explorer):
 
     def __init__(
         self,
+        encoder: fasthit.Encoder,
         model: fasthit.Model,
         rounds: int,
         expmt_queries_per_round: int,
         model_queries_per_round: int,
         training_data_size: int,
         starting_sequence: str,
-        alphabet: str,
+        log_file: Optional[str] = None,
+        alphabet: str = s_utils.AAS,
         mu: int = 1,
         recomb_rate: float = 0,
         threshold: float = 0.05,
         rho: int = 0,
         eval_batch_size: int = 20,
-        log_file: Optional[str] = None,
     ):
         """
         Args:
@@ -53,6 +54,7 @@ class Adalead(fasthit.Explorer):
 
         super().__init__(
             name,
+            encoder,
             model,
             rounds,
             expmt_queries_per_round,
@@ -61,9 +63,9 @@ class Adalead(fasthit.Explorer):
             training_data_size,
             log_file,
         )
+        self.alphabet = alphabet
         self.threshold = threshold
         self.recomb_rate = recomb_rate
-        self.alphabet = alphabet
         self.mu = mu  # number of mutations per *sequence*.
         self.rho = rho
         self.eval_batch_size = eval_batch_size
@@ -124,7 +126,8 @@ class Adalead(fasthit.Explorer):
             for i in range(0, len(parents), self.eval_batch_size):
                 # Here we do rollouts from each parent (root of rollout tree)
                 roots = parents[i : i + self.eval_batch_size]
-                root_fitnesses = self.model.get_fitness(roots)
+                encodings = self.encoder.encode(roots)
+                root_fitnesses = self.model.get_fitness(encodings)
 
                 nodes = list(enumerate(roots))
 
@@ -157,7 +160,8 @@ class Adalead(fasthit.Explorer):
                     # fitness than the root of the rollout tree.
                     # Otherwise, set node = child and add child to the list
                     # of sequences to propose.
-                    fitnesses = self.model.get_fitness(children)
+                    encodings = self.encoder.encode(children)
+                    fitnesses = self.model.get_fitness(encodings)
                     sequences.update(zip(children, fitnesses))
 
                     nodes = []

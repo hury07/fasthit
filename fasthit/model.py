@@ -1,11 +1,10 @@
 """Defines base Model class."""
 import abc
-from typing import Any, List
+from typing import Any, List, Union
 
 import numpy as np
 
 import fasthit
-from fasthit.types import SEQUENCES_TYPE
 
 
 class Model(fasthit.Landscape, abc.ABC):
@@ -16,7 +15,7 @@ class Model(fasthit.Landscape, abc.ABC):
     """
 
     @abc.abstractmethod
-    def train(self, sequences: SEQUENCES_TYPE, labels: List[Any]):
+    def train(self, sequences: Union[List[str], np.ndarray], labels: List[Any]):
         """
         Train model.
 
@@ -46,9 +45,9 @@ class LandscapeAsModel(Model):
         super().__init__(f"LandscapeAsModel={landscape.name}")
         self.landscape = landscape
 
-    def _fitness_function(self, sequences: SEQUENCES_TYPE) -> np.ndarray:
+    def _fitness_function(self, sequences: List[str]) -> np.ndarray:
         return self.landscape._fitness_function(sequences)
 
-    def train(self, sequences: SEQUENCES_TYPE, labels: List[Any]):
+    def train(self, sequences: List[str], labels: List[Any]):
         """No-op."""
         pass
