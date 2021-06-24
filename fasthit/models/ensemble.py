@@ -1,5 +1,4 @@
 """Defines the AdaptiveEnsemble model."""
-from copy import deepcopy
 from typing import List
 
 import numpy as np
@@ -38,9 +37,10 @@ class Ensemble(fasthit.Model):
         name = f"Ens({'|'.join(model.name for model in models)})"
         super().__init__(name)
 
-        self._models = deepcopy(models)
-        self._weights = np.ones(len(models)) / len(models)
+        self._models = models
+        self._uncertainties = np.inf
 
+        self._weights = np.ones(len(models)) / len(models)
         if combine_with == "sum":
             combine_with = lambda w, x: np.sum(w * x, axis=1)
         self._combine_with = combine_with

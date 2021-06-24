@@ -1,6 +1,6 @@
 ### Define abstract encoder class: Encoder
 import abc
-from typing import List
+from typing import Sequence
 
 import numpy as np
 
@@ -21,5 +21,5 @@ class Encoder(abc.ABC):
         self.batch_size = batch_size
 
     @abc.abstractmethod
-    def encode(self, sequences: List[str]) -> np.array:
+    def encode(self, sequences: Sequence[str]) -> np.array:
         pass

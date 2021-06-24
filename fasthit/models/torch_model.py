@@ -35,7 +35,7 @@ class TorchModel(fasthit.Model):
         """
         super().__init__(name)
 
-        self.model = NeuralNet(
+        self._model = NeuralNet(
             model,
             train_split=None,
             warm_start=True,
@@ -49,12 +49,16 @@ class TorchModel(fasthit.Model):
         verbose: bool = False,
     ):
         """Train Pytorch model."""
-        y = np.expand_dims(y, axis=1).astype(np.float32)
+        y = np.expand_dims(y, axis=1)#.astype(np.float32)
 
-        self.model.set_params(verbose=verbose)
-        self.model.fit(X, y)
+        self._model.set_params(verbose=verbose)
+        self._model.fit(X, y)
 
-    def _fitness_function(self, X: np.ndarray):
+    def _fitness_function(self, X: np.ndarray) -> np.ndarray:
         return np.nan_to_num(
             self.model.predict(X).squeeze(axis=1)
         )
+    
+    @property
+    def model(self):
+        return self._model

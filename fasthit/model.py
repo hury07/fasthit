@@ -1,5 +1,6 @@
 """Defines base Model class."""
 import abc
+from copy import deepcopy
 from typing import Any, List, Union
 
 import numpy as np
@@ -43,7 +44,7 @@ class LandscapeAsModel(Model):
 
         """
         super().__init__(f"LandscapeAsModel={landscape.name}")
-        self.landscape = landscape
+        self._landscape = deepcopy(landscape)
 
     def _fitness_function(self, sequences: List[str]) -> np.ndarray:
         return self.landscape._fitness_function(sequences)
@@ -51,3 +52,7 @@ class LandscapeAsModel(Model):
     def train(self, sequences: List[str], labels: List[Any]):
         """No-op."""
         pass
+    
+    @property
+    def landscape(self):
+        return self._landscape

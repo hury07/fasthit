@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Union
 
 import numpy as np
@@ -17,8 +16,8 @@ class RIO(fasthit.Model):
             name = f"{mean_module.name}_{uncertainty_module.name}"
         super().__init__(name)
 
-        self._mean_module = deepcopy(mean_module)
-        self._uncertainty_module = deepcopy(uncertainty_module)
+        self._mean_module = mean_module
+        self._uncertainty_module = uncertainty_module
     
     def train(
         self,

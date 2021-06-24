@@ -167,7 +167,7 @@ class Explorer(abc.ABC):
         for r in range_iterator(1, self.rounds + 1):
             round_start_time = time.time()
 
-            encodings = self.encoder.encode(training_data["sequence"].to_numpy())
+            encodings = self.encoder.encode(training_data["sequence"].to_list())
             labels = training_data["true_score"].to_numpy()
             self.model.train(encodings, labels)
 

@@ -3,7 +3,7 @@ import os
 import warnings
 from typing import Optional, Tuple
 
-import random
+#import random
 import numpy as np
 import pandas as pd
 
@@ -66,7 +66,8 @@ class MLDE(fasthit.Explorer):
             self.ddG_df = ddG_df.sort_values(by=["ddG"], ascending=True).reset_index(drop=True)
             self.search_map = self.ddG_df.loc[:self.model_queries_per_round-1]
             ### sample training data
-            train_idxs = random.sample(range(len(self.search_map)), self.training_data_size)
+            #train_idxs = random.sample(range(len(self.search_map)), self.training_data_size)
+            train_idxs = np.random.choice(len(self.search_map), self.training_data_size, replace=False)
             test_idxs = [idx for idx in range(len(self.search_map)) if idx not in train_idxs]
             train_seqs = self.search_map.loc[train_idxs]["AACombo"].to_numpy()
             ### search space shrinks
@@ -97,7 +98,7 @@ class MLDE(fasthit.Explorer):
             return measured_sequences, train_seqs, np.nan
         ### prioritize the remaining variants
         ### and propose top {eval_size} variants to measure
-        test_seqs = self.search_map["AACombo"].to_numpy()
+        test_seqs = self.search_map["AACombo"].to_list()
         encodings = self.encoder.encode(test_seqs)
         test_scores = self.model.get_fitness(encodings)
         eval_idxs = test_scores.argsort()[::-1][:eval_size]
@@ -138,7 +139,8 @@ class MLDE(fasthit.Explorer):
             self.search_map.drop(self.search_map.index, inplace=True)
             return measured_sequences, train_seqs, np.nan
         ###
-        train_idxs = random.sample(range(len(self.search_map)), self.training_data_size)
+        #train_idxs = random.sample(range(len(self.search_map)), self.training_data_size)
+        train_idxs = np.random.choice(len(self.search_map), self.training_data_size, replace=False)
         test_idxs = [idx for idx in range(len(self.search_map)) if idx not in train_idxs]
         train_seqs = self.search_map.loc[train_idxs]["AACombo"].to_numpy()
         self.search_map = self.search_map.loc[test_idxs].reset_index(drop=True)

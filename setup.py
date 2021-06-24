@@ -4,10 +4,10 @@ import setuptools
 ### get dependence package list
 _filedir = os.path.dirname(os.path.abspath(__file__))
 requirementPath = _filedir + '/requirements.txt'
-install_requires = []
+requirments = []
 if os.path.isfile(requirementPath):
     with open(requirementPath) as f:
-        install_requires = f.read().splitlines()
+        requirments = f.read().splitlines()
 
 with open("README.md") as f:
     long_description = f.read()
@@ -27,12 +27,12 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
     python_requires=">=3.7",
-    install_requires=install_requires,
+    install_requires=requirments,
     include_package_data=True,
     package_data={
         "": [
-            #"landscapes/data/rosetta/*",
-            #"landscapes/data/tf_binding/*",
+            "landscapes/data/rosetta/*",
+            "landscapes/data/tf_binding/*",
             "landscapes/data/gb1/*",
         ]
     },

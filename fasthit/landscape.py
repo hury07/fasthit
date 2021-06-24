@@ -17,8 +17,8 @@ class Landscape(abc.ABC):
     """
     def __init__(self, name: str):
         """Create Landscape, setting `name` and setting `cost` to zero."""
-        self.cost = 0
-        self.name = name
+        self._cost = 0
+        self._name = name
 
     @abc.abstractmethod
     def _fitness_function(self, sequences: Union[List[str], np.ndarray]) -> np.ndarray:
@@ -39,5 +39,17 @@ class Landscape(abc.ABC):
             Scores for each sequence.
 
         """
-        self.cost += len(sequences)
+        self._cost += len(sequences)
         return self._fitness_function(sequences)
+    
+    @property
+    def name(self):
+        return self._name
+    
+    @property
+    def cost(self):
+        return self._cost
+    
+    @cost.setter
+    def cost(self, cost):
+        self._cost = cost

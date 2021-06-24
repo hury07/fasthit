@@ -49,12 +49,14 @@ class Random(fasthit.Explorer):
         name = f"Random_mu={mu}"
 
         super().__init__(
-            model,
             name,
+            encoder,
+            model,
             rounds,
             expmt_queries_per_round,
             model_queries_per_round,
             starting_sequence,
+            training_data_size,
             log_file,
         )
         self.mu = mu
@@ -63,8 +65,10 @@ class Random(fasthit.Explorer):
         self.elitist = elitist
 
     def propose_sequences(
-        self, measured_sequences: pd.DataFrame
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        self,
+        measured_sequences: pd.DataFrame,
+        landscape: fasthit.Landscape,
+    ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
         old_sequences = measured_sequences["sequence"]
         old_sequence_set = set(old_sequences)
@@ -80,7 +84,7 @@ class Random(fasthit.Explorer):
                 new_seqs.add(new_seq)
 
         new_seqs = np.array(list(new_seqs))
-        encodings = self.encoder.encode(new_seqs)
+        encodings = self.encoder.encode(new_seqs.tolist())
         preds = self.model.get_fitness(encodings)
 
         if self.elitist:
@@ -88,4 +92,17 @@ class Random(fasthit.Explorer):
         else:
             idxs = self.rng.integers(0, len(new_seqs), size=self.expmt_queries_per_round)
 
-        return new_seqs[idxs], preds[idxs]
+        return measured_sequences, new_seqs[idxs], preds[idxs]
+
+    def get_training_data(
+        self,
+        measured_sequences: pd.DataFrame,
+    ) -> pd.DataFrame:
+        eval_size = min(len(measured_sequences), self.model_queries_per_round)
+        sorted_df = measured_sequences.sort_values(
+            by=["true_score"], ascending=False
+        ).reset_index(drop=True)
+        filtered_seqs = sorted_df.loc[:eval_size-1]
+        idxs = np.random.choice(eval_size, self.training_data_size, replace=False)
+        sampled_seqs = filtered_seqs.loc[idxs]
+        return sampled_seqs

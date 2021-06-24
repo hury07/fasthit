@@ -6,6 +6,5 @@ from fasthit.landscape import Landscape
 from fasthit.encoder import Encoder
 from fasthit.model import Model
 from fasthit.explorer import Explorer
-from fasthit.ensemble import Ensemble
 
 from fasthit import landscapes, encoders, models, explorers

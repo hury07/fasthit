@@ -1,5 +1,5 @@
 ###
-from typing import List
+from typing import Sequence
 
 import numpy as np
 
@@ -38,7 +38,7 @@ class Georgiev(fasthit.Encoder):
         ]
         super().__init__("georgiev", alphabet, len(self.georgiev_params))
 
-    def encode(self, sequences: List[str]) -> np.array:
+    def encode(self, sequences: Sequence[str]) -> np.array:
         return np.array(
             [
                 [

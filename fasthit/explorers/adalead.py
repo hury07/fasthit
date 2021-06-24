@@ -34,7 +34,7 @@ class Adalead(fasthit.Explorer):
         log_file: Optional[str] = None,
         alphabet: str = s_utils.AAS,
         mu: int = 1,
-        recomb_rate: float = 0,
+        recomb_rate: float = 0.,
         threshold: float = 0.05,
         rho: int = 0,
         eval_batch_size: int = 20,
@@ -191,6 +191,6 @@ class Adalead(fasthit.Explorer):
             by=["true_score"], ascending=False
         ).reset_index(drop=True)
         filtered_seqs = sorted_df.loc[:eval_size-1]
-        idxs = random.sample(range(eval_size), self.training_data_size)
+        idxs = np.random.choice(eval_size, self.training_data_size, replace=False)
         sampled_seqs = filtered_seqs.loc[idxs]
         return sampled_seqs

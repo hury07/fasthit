@@ -15,8 +15,8 @@ class GPRegressor(fasthit.Model):
         self,
         backend: str = 'sklearn',
         n_restarts: int = 0,
-        kernel=None,
-        normalize_y=True,
+        kernel = None,
+        normalize_y = True,
         batch_size: int = 1000,
         n_jobs: int = 1,
         n_inducing: int = 1000,
@@ -31,6 +31,7 @@ class GPRegressor(fasthit.Model):
         self._batch_size = batch_size
         self._n_jobs = n_jobs
         self._n_inducing = n_inducing
+        self._uncertainties = np.inf
 
     def train(
         self,
@@ -38,8 +39,9 @@ class GPRegressor(fasthit.Model):
         y: np.ndarray,
         verbose: bool = False
     ):
+        ###
         X = X.reshape(X.shape[0], X.shape[1] * X.shape[2])
-        n_samples, n_features = X.shape
+        ###
         if verbose:
             print('Fitting GP model on {} data points with dimension {}...'
                    .format(*X.shape))
@@ -54,6 +56,7 @@ class GPRegressor(fasthit.Model):
         # GPy backend.
         elif self._backend == 'gpy':
             import GPy
+            n_samples, n_features = X.shape
             kernel = GPy.kern.RBF(
                 input_dim=n_features,
                 variance=1.0,
@@ -67,8 +70,8 @@ class GPRegressor(fasthit.Model):
             self._model.optimize(messages=verbose)
         # GPyTorch with CUDA backend.
         elif self._backend == 'gpytorch':
-            X = torch.Tensor(X).contiguous().cuda()
-            y = torch.Tensor(y).contiguous().cuda()
+            X = torch.tensor(X, dtype=torch.float32, device="cuda")
+            y = torch.tensor(y, dtype=torch.float32, device="cuda")
             ###
             self._likelihood = gpytorch.likelihoods.GaussianLikelihood().cuda()
             self._model = GPyTorchRegressor(X, y, self._likelihood).cuda()
@@ -76,9 +79,7 @@ class GPRegressor(fasthit.Model):
             self._model.train()
             self._likelihood.train()
             # Use the Adam optimizer.
-            optimizer = torch.optim.Adam([
-                {'params': self._model.parameters()}, # Includes GaussianLikelihood parameters.
-            ], lr=1.)
+            optimizer = torch.optim.Adam(self._model.parameters(), lr=1.)
             # Loss for GPs is the marginal log likelihood.
             mll = gpytorch.mlls.ExactMarginalLogLikelihood(self._likelihood, self._model)
             ###
@@ -96,7 +97,9 @@ class GPRegressor(fasthit.Model):
             print('Done fitting GP model.')
 
     def _fitness_function(self, X: np.ndarray) -> np.ndarray:
+        ###
         X = X.reshape(X.shape[0], X.shape[1] * X.shape[2])
+        ###
         if self._backend == 'sklearn':
             n_batches = int(ceil(float(X.shape[0]) / self._batch_size))
             results = Parallel(n_jobs=self._n_jobs)(
@@ -112,7 +115,7 @@ class GPRegressor(fasthit.Model):
         elif self._backend == 'gpy':
             mean, var = self._model.predict(X, full_cov=False)
         elif self._backend == 'gpytorch':
-            X = torch.Tensor(X).contiguous().cuda()
+            X = torch.tensor(X, dtype=torch.float32, device="cuda")
             # Set into eval mode.
             self._model.eval()
             self._likelihood.eval()

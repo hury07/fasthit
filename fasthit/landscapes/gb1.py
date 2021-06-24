@@ -73,7 +73,10 @@ class GB1(fasthit.Landscape):
         """
 
     def _fitness_function(self, sequences: List[str]) -> np.ndarray:
-        return np.array([self.sequences[seq] for seq in sequences])
+        return np.array(
+            [self.sequences[seq] for seq in sequences],
+            dtype=np.float32
+        )
 
 
 def registry() -> Dict[str, Dict]:
@@ -96,7 +99,7 @@ def registry() -> Dict[str, Dict]:
     Returns:
         Problems in the registry.
     """
-    starting_sequences = [
+    only_measured = [
         "FWRA",
         "FWWA",
         "FWSA",
@@ -118,20 +121,41 @@ def registry() -> Dict[str, Dict]:
         "VYVG",
     ]
 
+    with_imputed = [
+        "AHNA",
+        "CHCA",
+        "NHCA",
+        "ATRA",
+        "KAHC",
+        "AHHK",
+        "CRCA",
+        "AHGC",
+        "WHRH",
+        "GSCQ",
+        "AGFR",
+        "YYCS",
+        "AMLG",
+        "SIDW",
+        "CMPW",
+        "VRFM",
+        "KVGF",
+        "MRGM",
+    ]
+
     problems = {
         "only_measured": {
             "params": {
                 "data_used": "only_measured",
                 "search_space": "V39,D40,G41,V54",
             },
-            "starts": starting_sequences,
+            "starts": only_measured,
         },
         "with_imputed": {
             "params": {
                 "data_used": "with_imputed",
                 "search_space": "V39,D40,G41,V54",
             },
-            "starts": starting_sequences,
+            "starts": with_imputed,
         },
     }
 
