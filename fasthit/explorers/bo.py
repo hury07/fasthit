@@ -3,7 +3,6 @@ from bisect import bisect_left
 from typing import Optional, Tuple
 
 import numpy as np
-from numpy.core.fromnumeric import shape
 import pandas as pd
 
 import fasthit
@@ -63,29 +62,25 @@ class BO_EVO(fasthit.Explorer):
             training_data_size,
             log_file,
         )
-        self.alphabet = alphabet
-        self.proposal_func = proposal_func
-        self.recomb_rate = recomb_rate
-        self.best_fitness = 0.0
-        self.num_actions = 0
-        #self.state = None
-        #self.seq_len = None
-        #self.memory = None
-        #self.initial_uncertainty = None
+        self._alphabet = alphabet
+        self._recomb_rate = recomb_rate
+        self._best_fitness = 0.0
+        self._num_actions = 0
         proposal_funcs = {
-            "UCB": self.UCB,
-            "Thompson": self.Thompson,
-            "EI": self.EI,
+            "Greedy": self._Greedy,
+            "UCB": self._UCB,
+            "Thompson": self._Thompson,
+            "EI": self._EI,
         }
-        self.proposal_func = proposal_funcs[proposal_func]
+        self._proposal_func = proposal_funcs[proposal_func]
 
     def initialize_data_structures(self):
         """Initialize."""
-        self.state = s_utils.string_to_one_hot(self.starting_sequence, self.alphabet)
-        self.seq_len = len(self.starting_sequence)
+        self.state = s_utils.string_to_one_hot(self.starting_sequence, self._alphabet)
+        self._seq_len = len(self.starting_sequence)
         # use PER buffer, same as in DQN
         self.memory = PrioritizedReplayBuffer(
-            len(self.alphabet) * self.seq_len, 100000, self.expmt_queries_per_round, 0.6
+            len(self._alphabet) * self._seq_len, 100000, self.expmt_queries_per_round, 0.6
         )
 
     def train_models(self):
@@ -98,7 +93,7 @@ class BO_EVO(fasthit.Explorer):
             self.memory.batch_size = self.expmt_queries_per_round
         states = batch["next_obs"]
         state_seqs = [
-            s_utils.one_hot_to_string(state.reshape((-1, len(self.alphabet))), self.alphabet)
+            s_utils.one_hot_to_string(state.reshape((-1, len(self._alphabet))), self._alphabet)
             for state in states
         ]
         rewards = batch["rews"]
@@ -113,7 +108,7 @@ class BO_EVO(fasthit.Explorer):
             strB = []
             switch = False
             for ind in range(len(gen[i])):
-                if np.random.random() < self.recomb_rate:
+                if np.random.random() < self._recomb_rate:
                     switch = not switch
                 # putting together recombinants
                 if switch:
@@ -130,17 +125,17 @@ class BO_EVO(fasthit.Explorer):
         """Sample actions resulting in sequences to screen."""
         actions = set()
         pos_changes = []
-        for pos in range(self.seq_len):
+        for pos in range(self._seq_len):
             pos_changes.append([])
-            for res in range(len(self.alphabet)):
+            for res in range(len(self._alphabet)):
                 if self.state[pos, res] == 0:
                     pos_changes[pos].append((pos, res))
         while len(actions) < self.model_queries_per_round / self.expmt_queries_per_round:
             action = []
-            for pos in range(self.seq_len):
-                if np.random.random() < 1 / self.seq_len:
+            for pos in range(self._seq_len):
+                if np.random.random() < 1 / self._seq_len:
                     pos_tuple = pos_changes[pos][
-                        np.random.randint(len(self.alphabet) - 1)
+                        np.random.randint(len(self._alphabet) - 1)
                     ]
                     action.append(pos_tuple)
             if len(action) > 0 and tuple(action) not in actions:
@@ -155,37 +150,37 @@ class BO_EVO(fasthit.Explorer):
         actions_to_screen = []
         states_to_screen = []
         for i in range(self.model_queries_per_round // self.expmt_queries_per_round):
-            x = np.zeros((self.seq_len, len(self.alphabet)))
+            x = np.zeros((self._seq_len, len(self._alphabet)))
             for action in actions[i]:
                 x[action] = 1
             actions_to_screen.append(x)
             state_to_screen = s_utils.construct_mutant_from_sample(x, state)
-            states_to_screen.append(s_utils.one_hot_to_string(state_to_screen, self.alphabet))
+            states_to_screen.append(s_utils.one_hot_to_string(state_to_screen, self._alphabet))
         encodings = self.encoder.encode(states_to_screen)
         preds = self.model.get_fitness(encodings)
         ###
-        action_idx = np.argmax(self.proposal_func(preds)) ### greedy
+        action_idx = np.argmax(self._proposal_func(preds)) ### greedy TODO: any improvement?
         uncertainty = self.model.uncertainties[action_idx]
         ###
         action = actions_to_screen[action_idx]
         new_state_string = states_to_screen[action_idx]
-        self.state = s_utils.string_to_one_hot(new_state_string, self.alphabet)
+        self.state = s_utils.string_to_one_hot(new_state_string, self._alphabet)
         ###
         new_state = self.state
         reward = preds[action_idx]
         if new_state_string not in all_measured_seqs:
-            self.best_fitness = max(self.best_fitness, reward)
+            self._best_fitness = max(self._best_fitness, reward)
             self.memory.store(state.ravel(), action.ravel(), reward, new_state.ravel())
-        self.num_actions += 1
+        self._num_actions += 1
         return uncertainty, new_state_string, reward
 
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame,
-        landscape: fasthit.Landscape,
+        landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
-        if self.num_actions == 0:
+        if self._num_actions == 0:
             # indicates model was reset
             self.initialize_data_structures()
         else:
@@ -197,7 +192,7 @@ class BO_EVO(fasthit.Explorer):
             _last_batch_seqs = last_batch["sequence"].tolist()
             _last_batch_true_scores = last_batch["true_score"].tolist()
             last_batch_seqs = _last_batch_seqs
-            if self.recomb_rate > 0 and len(last_batch) > 1:
+            if self._recomb_rate > 0 and len(last_batch) > 1:
                 last_batch_seqs = self._recombine_population(last_batch_seqs)
             measured_batch = []
             _new_seqs = []
@@ -216,7 +211,7 @@ class BO_EVO(fasthit.Explorer):
                 )
             measured_batch = sorted(measured_batch)
             sampled_seq = self.Thompson_sample(measured_batch)
-            self.state = s_utils.string_to_one_hot(sampled_seq, self.alphabet)
+            self.state = s_utils.string_to_one_hot(sampled_seq, self._alphabet)
         # generate next batch by picking actions
         self.initial_uncertainty = None
         samples = set()
@@ -232,11 +227,11 @@ class BO_EVO(fasthit.Explorer):
                 # reset sequence to starting sequence if we're in territory that's too
                 # uncharted
                 sampled_seq = self.Thompson_sample(measured_batch)
-                self.state = s_utils.string_to_one_hot(sampled_seq, self.alphabet)
+                self.state = s_utils.string_to_one_hot(sampled_seq, self._alphabet)
                 self.initial_uncertainty = None
         if len(samples) < self.expmt_queries_per_round:
             random_sequences = s_utils.generate_random_sequences(
-                self.seq_len, self.expmt_queries_per_round - len(samples), self.alphabet
+                self._seq_len, self.expmt_queries_per_round - len(samples), self._alphabet
             )
             samples.update(random_sequences)
         # get predicted fitnesses of samples
@@ -260,16 +255,19 @@ class BO_EVO(fasthit.Explorer):
         sampled_seqs = filtered_seqs.loc[idxs]
         return sampled_seqs
 
-    def EI(self, preds):
-        """Compute expected improvement."""
-        return np.array([max(pred - self.best_fitness, 0) for pred in preds])
+    def _Greedy(self, preds):
+        return preds
 
-    def UCB(self, preds):
+    def _EI(self, preds):
+        """Compute expected improvement."""
+        return np.array([max(pred - self._best_fitness, 0) for pred in preds])
+
+    def _UCB(self, preds):
         """Upper confidence bound."""
         discount = 0.01
         return preds - discount * self.model.uncertainties
 
-    def Thompson(self, preds):
+    def _Thompson(self, preds):
         return np.random.normal(preds, self.model.uncertainties)
 
     @staticmethod
@@ -322,23 +320,23 @@ class BO_ENU(fasthit.Explorer):
             training_data_size,
             log_file,
         )
-        self.alphabet = alphabet
-        self.alphabet_len = len(alphabet)
-        self.best_fitness = 0
-        self.top_sequence = []
-        self.seq_len = len(starting_sequence)
-        #self.maxima = None
-        self.eval_batch_size = eval_batch_size
+        self._alphabet = alphabet
+        self._alphabet_len = len(alphabet)
+        self._best_fitness = 0
+        self._top_sequence = []
+        self._seq_len = len(starting_sequence)
+        self._eval_batch_size = eval_batch_size
         proposal_funcs = {
-            "UCB": self.propose_sequences_via_ucb,
-            "Thompson": self.propose_sequences_via_thompson,
             "Greedy": self.propose_sequences_via_greedy,
+            "EI": self.propose_sequences_via_ei,
+            "Thompson": self.propose_sequences_via_thompson,
+            "UCB": self.propose_sequences_via_ucb,
         }
-        self.proposal_func = proposal_funcs[proposal_func]
+        self._proposal_func = proposal_funcs[proposal_func]
 
     def reset(self):
         """Reset."""
-        self.best_fitness = 0
+        self._best_fitness = 0
         self._reset = True
 
     def propose_sequences_via_greedy(self):
@@ -350,9 +348,9 @@ class BO_ENU(fasthit.Explorer):
         def enum_and_eval(curr_seq):
             # if we have a full sequence, then let's evaluate
             nonlocal new_seqs
-            if len(curr_seq) == self.seq_len:
+            if len(curr_seq) == self._seq_len:
                 new_seqs.append(curr_seq)
-                if len(new_seqs) >= self.eval_batch_size:
+                if len(new_seqs) >= self._eval_batch_size:
                     encodings = self.encoder.encode(new_seqs)
                     fitness = self.model.get_fitness(encodings)
                     self.maxima.extend(
@@ -361,11 +359,14 @@ class BO_ENU(fasthit.Explorer):
                     )
                     new_seqs = []
             else:
-                for char in list(self.alphabet):
+                for char in list(self._alphabet):
                     enum_and_eval(curr_seq + char)
         enum_and_eval("")
         # Sort descending based on the value.
         return sorted(self.maxima, reverse=True, key=lambda x: x[0])
+
+    def propose_sequences_via_ei(self):
+        pass
 
     def propose_sequences_via_thompson(self):
         """Propose a batch of new sequences.
@@ -376,9 +377,9 @@ class BO_ENU(fasthit.Explorer):
         def enum_and_eval(curr_seq):
             # if we have a full sequence, then let's evaluate
             nonlocal new_seqs
-            if len(curr_seq) == self.seq_len:
+            if len(curr_seq) == self._seq_len:
                 new_seqs.append(curr_seq)
-                if len(new_seqs) >= self.eval_batch_size:
+                if len(new_seqs) >= self._eval_batch_size:
                     encodings = self.encoder.encode(new_seqs)
                     fitness = self.model.get_fitness(encodings)
                     estimated_fitness = np.random.normal(fitness, self.model.uncertainties)
@@ -388,7 +389,7 @@ class BO_ENU(fasthit.Explorer):
                     )
                     new_seqs = []
             else:
-                for char in list(self.alphabet):
+                for char in list(self._alphabet):
                     enum_and_eval(curr_seq + char)
         enum_and_eval("")
         # Sort descending based on the value.
@@ -403,9 +404,9 @@ class BO_ENU(fasthit.Explorer):
         def enum_and_eval(curr_seq):
             # if we have a full sequence, then let's evaluate
             nonlocal new_seqs
-            if len(curr_seq) == self.seq_len:
+            if len(curr_seq) == self._seq_len:
                 new_seqs.append(curr_seq)
-                if len(new_seqs) >= self.eval_batch_size:
+                if len(new_seqs) >= self._eval_batch_size:
                     encodings = self.encoder.encode(new_seqs)
                     fitness = self.model.get_fitness(encodings)
                     self.maxima.extend(
@@ -414,7 +415,7 @@ class BO_ENU(fasthit.Explorer):
                     )
                     new_seqs = []
             else:
-                for char in list(self.alphabet):
+                for char in list(self._alphabet):
                     enum_and_eval(curr_seq + char)
         enum_and_eval("")
         # Sort descending based on the value.
@@ -423,11 +424,11 @@ class BO_ENU(fasthit.Explorer):
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame,
-        landscape: fasthit.Landscape,
+        landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose `batch_size` samples."""
         samples = set()
-        new_seqs = self.proposal_func()
+        new_seqs = self._proposal_func()
         new_states = []
         new_fitnesses = []
         i = 0
@@ -435,10 +436,10 @@ class BO_ENU(fasthit.Explorer):
         while (len(new_states) < self.expmt_queries_per_round) and i < len(new_seqs):
             new_fitness, new_seq = new_seqs[i]
             if new_seq not in all_measured_seqs:
-                new_state = s_utils.string_to_one_hot(new_seq, self.alphabet)
-                if new_fitness >= self.best_fitness:
-                    self.top_sequence.append((new_fitness, new_state, self.model.cost))
-                    self.best_fitness = new_fitness
+                new_state = s_utils.string_to_one_hot(new_seq, self._alphabet)
+                if new_fitness >= self._best_fitness:
+                    self._top_sequence.append((new_fitness, new_state, self.model.cost))
+                    self._best_fitness = new_fitness
                 samples.add(new_seq)
                 all_measured_seqs.add(new_seq)
                 new_states.append(new_state)

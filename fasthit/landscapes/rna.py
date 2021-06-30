@@ -1,8 +1,7 @@
 """Defines RNA binding landscape and problem registry."""
-from typing import Dict, List
+from typing import Dict, Sequence
 
 import numpy as np
-
 # ViennaRNA is an optional dependency
 try:
     import RNA
@@ -19,12 +18,12 @@ class RNAFolding(fasthit.Landscape):
         """Create an RNAFolding landscape."""
         super().__init__(name="RNAFolding")
 
-        self.sequences = {}
-        self.norm_value = norm_value
+        self._sequences = {}
+        self._norm_value = norm_value
 
-    def _fitness_function(self, sequence: List[str]):
+    def _fitness_function(self, sequence: Sequence[str]) -> np.ndarray:
         _, fe = RNA.fold(sequence)
-        return -fe / self.norm_value
+        return -fe.astype(np.float32) / self._norm_value
 
 
 class RNABinding(fasthit.Landscape):
@@ -32,7 +31,7 @@ class RNABinding(fasthit.Landscape):
 
     def __init__(
         self,
-        targets: List[str],
+        targets: Sequence[str],
         seq_length: int,
         conserved_region: Dict = None,
     ):
@@ -62,59 +61,50 @@ class RNABinding(fasthit.Landscape):
                 "      Conda installation available at "
                 "https://anaconda.org/bioconda/viennarna."
             ) from e
-
         super().__init__(name=f"RNABinding_T{targets}_L{seq_length}")
 
-        self.targets = targets
-        self.seq_length = seq_length
-        self.conserved_region = conserved_region
-        self.norm_values = self.compute_min_binding_energies()
+        self._targets = targets
+        self._seq_length = seq_length
+        self._conserved_region = conserved_region
+        self._norm_values = self._compute_min_binding_energies()
 
-        self.sequences = {}
+        self._sequences = {}
 
-    def compute_min_binding_energies(self):
-        """Compute the lowest possible binding energy for each target."""
-        complements = {"A": "U", "C": "G", "G": "C", "U": "A"}
-
-        min_energies = []
-        for target in self.targets:
-            complement = "".join(complements[x] for x in target)[::-1]
-            energy = RNA.duplexfold(complement, target).energy
-            min_energies.append(energy * self.seq_length / len(target))
-
-        return np.array(min_energies)
-
-    def _fitness_function(self, sequences: List[str]):
+    def _fitness_function(self, sequences: Sequence[str]) -> np.ndarray:
         fitnesses = []
-
         for seq in sequences:
-
             # Check that sequence is of correct length
-            if len(seq) != self.seq_length:
+            if len(seq) != self._seq_length:
                 raise ValueError(
-                    f"All sequences in `sequences` must be of length {self.seq_length}"
+                    f"All sequences in `sequences` must be of length {self._seq_length}"
                 )
-
-            # If `self.conserved_region` is not None, check that the region is conserved
-            if self.conserved_region is not None:
-                start = self.conserved_region["start"]
-                pattern = self.conserved_region["pattern"]
-
+            # If `self._conserved_region` is not None, check that the region is conserved
+            if self._conserved_region is not None:
+                start = self._conserved_region["start"]
+                pattern = self._conserved_region["pattern"]
                 # If region not conserved, fitness is 0
                 if seq[start : start + len(pattern)] != pattern:
                     fitnesses.append(0)
                     continue
-
             # Energy is sum of binding energies across all targets
             energies = np.array(
-                [RNA.duplexfold(target, seq).energy for target in self.targets]
+                [RNA.duplexfold(target, seq).energy for target in self._targets]
             )
-            fitness = (energies / self.norm_values).mean()
-
+            fitness = (energies / self._norm_values).mean()
             fitnesses.append(fitness)
+        return np.array(fitnesses, dtype=np.float32)
 
-        return np.array(fitnesses)
+    def _compute_min_binding_energies(self):
+        """Compute the lowest possible binding energy for each target."""
+        complements = {"A": "U", "C": "G", "G": "C", "U": "A"}
 
+        min_energies = []
+        for target in self._targets:
+            complement = "".join(complements[x] for x in target)[::-1]
+            energy = RNA.duplexfold(complement, target).energy
+            min_energies.append(energy * self._seq_length / len(target))
+
+        return np.array(min_energies)
 
 def registry():
     """
@@ -144,27 +134,27 @@ def registry():
 
     # Starting sequences of lengths 14, 50, and 100
     starts = {
-        14: {
-            1: "AUGGGCCGGACCCC",
-            2: "GCCCCGCCGGAAUG",
-            3: "UCUUGGGGACUUUU",
-            4: "GGAUAACAAUUCAU",
-            5: "CCCAUGCGCGAUCA",
-        },
-        50: {
-            1: "GAACGAGGCACAUUCCGGCUCGCCCGGCCCAUGUGAGCAUGGGCCGGACC",
-            2: "CCGUCCGCGCGGGGCCCCCGCGCGGACGGGGGCGAGCCGGAAUGUGCCUC",
-            3: "AUGUUUCUUUUAUUUAUCUGAGCAUGGGCGGGGCAUUUGCCCAUGCAAUU",
-            4: "UAAACGAUGCUUUUGCGCCUGCAUGUGGGUUAGCCGAGUAUCAUGGCAAU",
-            5: "AGGGAAGAUUAGAUUACUCUUAUAUGACGUAGGAGAGAGUGCGGUUAAGA",
-        },
-        100: {
-            1: "GAACGAGGCACAUUCCGGCUCGCCCGGCCCAUGUGAGCAUGGGCCGGACCCCGUCCGCGCGGGGCCCCCGCGCGGACGGGGGCGAGCCGGAAUGUGCCUC",  # noqa: E501
-            2: "AGCAUCUCGCCGUGGGGGCGGGCCCGGCCCAUGUGAGCAUGCGUAGGUUUAUCCCAUAGAGGACCCCGGGAGAACUGUCCAAUUGGCUCCUAGCCCACGC",  # noqa: E501
-            3: "GGCGGAUACUAGACCCUAUUGGCCCGGCCCAUGUGAGCAUGGCCCCAGAUCUUCCGCUCACUCGCAUAUUCCCUCCGGUUAAGUUGCCGUUUAUGAAGAU",  # noqa: E501
-            4: "UUGCAGGUCCCUACACCUCCGGCCCGGCCCAUGUGACCAUGAAUAGUCCACAUAAAAACCGUGAUGGCCAGUGCAGUUGAUUCCGUGCUCUGUACCCUUU",  # noqa: E501
-            5: "UGGCGAUGAGCCGAGCCGCCAUCGGACCAUGUGCAAUGUAGCCGUUCGUAGCCAUUAGGUGAUACCACAGAGUCUUAUGCGGUUUCACGUUGAGAUUGCA",  # noqa: E501
-        },
+        14: [
+            "AUGGGCCGGACCCC",
+            "GCCCCGCCGGAAUG",
+            "UCUUGGGGACUUUU",
+            "GGAUAACAAUUCAU",
+            "CCCAUGCGCGAUCA",
+        ],
+        50: [
+            "GAACGAGGCACAUUCCGGCUCGCCCGGCCCAUGUGAGCAUGGGCCGGACC",
+            "CCGUCCGCGCGGGGCCCCCGCGCGGACGGGGGCGAGCCGGAAUGUGCCUC",
+            "AUGUUUCUUUUAUUUAUCUGAGCAUGGGCGGGGCAUUUGCCCAUGCAAUU",
+            "UAAACGAUGCUUUUGCGCCUGCAUGUGGGUUAGCCGAGUAUCAUGGCAAU",
+            "AGGGAAGAUUAGAUUACUCUUAUAUGACGUAGGAGAGAGUGCGGUUAAGA",
+        ],
+        100: [
+            "GAACGAGGCACAUUCCGGCUCGCCCGGCCCAUGUGAGCAUGGGCCGGACCCCGUCCGCGCGGGGCCCCCGCGCGGACGGGGGCGAGCCGGAAUGUGCCUC",  # noqa: E501
+            "AGCAUCUCGCCGUGGGGGCGGGCCCGGCCCAUGUGAGCAUGCGUAGGUUUAUCCCAUAGAGGACCCCGGGAGAACUGUCCAAUUGGCUCCUAGCCCACGC",  # noqa: E501
+            "GGCGGAUACUAGACCCUAUUGGCCCGGCCCAUGUGAGCAUGGCCCCAGAUCUUCCGCUCACUCGCAUAUUCCCUCCGGUUAAGUUGCCGUUUAUGAAGAU",  # noqa: E501
+            "UUGCAGGUCCCUACACCUCCGGCCCGGCCCAUGUGACCAUGAAUAGUCCACAUAAAAACCGUGAUGGCCAGUGCAGUUGAUUCCGUGCUCUGUACCCUUU",  # noqa: E501
+            "UGGCGAUGAGCCGAGCCGCCAUCGGACCAUGUGCAAUGUAGCCGUUCGUAGCCAUUAGGUGAUACCACAGAGUCUUAUGCGGUUUCACGUUGAGAUUGCA",  # noqa: E501
+        ],
     }
 
     problems = {}

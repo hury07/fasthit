@@ -1,6 +1,6 @@
 """Define TFBinding landscape and problem registry."""
 import os
-from typing import Dict, List
+from typing import Dict, Sequence
 
 import numpy as np
 import pandas as pd
@@ -36,11 +36,11 @@ class TFBinding(fasthit.Landscape):
         # "8-mer.1".
         # Since it doesn't really matter which strand we have, we will map the sequences
         # of both strands to the same normalized enrichment score.
-        self.sequences = dict(zip(data["8-mer"], norm_score))
-        self.sequences.update(zip(data["8-mer.1"], norm_score))
+        self._sequences = dict(zip(data["8-mer"], norm_score))
+        self._sequences.update(zip(data["8-mer.1"], norm_score))
 
-    def _fitness_function(self, sequences: List[str]) -> np.ndarray:
-        return np.array([self.sequences[seq] for seq in sequences])
+    def _fitness_function(self, sequences: Sequence[str]) -> np.ndarray:
+        return np.array([self._sequences[seq] for seq in sequences])
 
 
 def registry() -> Dict[str, Dict]:

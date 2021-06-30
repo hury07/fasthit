@@ -1,4 +1,5 @@
 ###
+import re
 from typing import Sequence
 
 import math
@@ -10,15 +11,14 @@ import fasthit
 
 encodings = pd.DataFrame(
     {
-        "encoder": ["transformer", "unirep", "trrosetta"],
-        "model": ["bert-base", "babbler-1990", ["xaa", "xab", "xac", "xad", "xae"]],
-        "n_features": [768, 1900, 526],
+        "encoder": ["prot_bert_bfd", "prot_t5_xl_uniref50"],
+        "n_features": [1024, 1024],
     }
 )
 encodings.set_index("encoder", inplace=True)
 
 
-class TAPE(fasthit.Encoder):
+class ProtTrans(fasthit.Encoder):
     def __init__(
         self,
         encoding: str,
@@ -28,27 +28,27 @@ class TAPE(fasthit.Encoder):
         batch_size: int = 256,
         nogpu: bool = False,
     ):
-        assert encoding in ["transformer", "unirep", "trrosetta"]
+        assert encoding in ["prot_bert_bfd", "prot_t5_xl_uniref50"]
 
-        name = f"TAPE_{encoding}"
+        name = f"ProtTrans_{encoding}"
         self._encoding = encodings.loc[encoding]
         self._wt_seq = wt_seq
         self._target_python_idxs = target_python_idxs
         self._nogpu = nogpu
         self._embeddings = {}
 
-        import tape
-        self._tokenizer = tape.TAPETokenizer(vocab='iupac')
-        if self._encoding["model"] in ["bert-base"]:
-            self._pretraind_model = tape.ProteinBertModel.from_pretrained(self._encoding["model"]) 
+        if encoding in ["prot_bert_bfd"]:
+            from transformers import BertModel, BertTokenizer
+            self._tokenizer = BertTokenizer.from_pretrained(f"Rostlab/{encoding}", do_lower_case=False)
+            self._pretrained_model = BertModel.from_pretrained(f"Rostlab/{encoding}")
             self._target_protein_idxs = [idx + 1 for idx in target_python_idxs]
-        elif self._encoding["model"] in ["babbler-1900"]:
-            self._pretraind_model = tape.UniRepModel.from_pretrained(self._encoding["model"])
-            self._tokenizer = tape.TAPETokenizer(vocab='unipre')
-            self._target_protein_idxs = [idx + 1 for idx in target_python_idxs] # TODO check
-        elif self._encoding["model"] in ["xaa", "xab", "xac", "xad", "xae"]:
-            self._pretraind_model = tape.TRRosetta.from_pretrained(self._encoding["model"])
-            self._target_protein_idxs = [idx + 1 for idx in target_python_idxs] # TODO check
+        elif encoding in ["prot_t5_xl_uniref50"]:
+            from transformers import T5EncoderModel, T5Tokenizer
+            self._tokenizer = T5Tokenizer.from_pretrained(f"Rostlab/{encoding}", do_lower_case=False)
+            self._pretrained_model = T5EncoderModel.from_pretrained(f"Rostlab/{encoding}")
+            self._target_protein_idxs = target_python_idxs
+        else:
+            pass
 
         super().__init__(
             name,
@@ -68,6 +68,7 @@ class TAPE(fasthit.Encoder):
         ###
         unencoded_idx = [idx for idx in range(len(sequences)) if idx not in encoded_idx]
         unencoded_seqs = [sequences[idx] for idx in unencoded_idx]
+        ###
         n_batches = math.ceil(len(unencoded_seqs) / self.batch_size)
         ###
         extracted_embeddings = [None for _ in range(n_batches)]
@@ -80,7 +81,8 @@ class TAPE(fasthit.Encoder):
                 # Loop over the target python indices and set new amino acids
                 for aa, ind in zip(combo, self._target_python_idxs):
                     temp_seq[ind] = aa
-                temp_seqs[j] = "".join(temp_seq)
+                temp_seqs[j] = " ".join(temp_seq)
+            temp_seqs = [re.sub(r"[UZOB]", "X", seq) for seq in temp_seqs]
             extracted_embeddings[i] = self._embed(temp_seqs, combo_batch)
         unencoded = np.concatenate(extracted_embeddings, axis=0)
         embeddings = np.empty((len(sequences), *unencoded.shape[1:]), dtype=np.float32)
@@ -89,7 +91,7 @@ class TAPE(fasthit.Encoder):
         for i, idx in enumerate(unencoded_idx):
             embeddings[idx] = unencoded[i]
         return embeddings
-
+    
     def _embed(
         self,
         sequences: Sequence[str],
@@ -99,12 +101,14 @@ class TAPE(fasthit.Encoder):
         import torch
         ###
         device = torch.device('cuda:0' if torch.cuda.is_available() and not self._nogpu else 'cpu')
-        model = self._pretraind_model.to(device)
-        model.eval()
-        token_ids = torch.tensor([self._tokenizer.encode(seq) for seq in sequences], device=device)
+        model = self._pretrained_model.to(device)
+        model = model.eval()
+        ids = self._tokenizer.batch_encode_plus(sequences, add_special_tokens=True, pad_to_max_length=True)
+        input_ids = torch.tensor(ids['input_ids']).to(device)
+        attention_mask = torch.tensor(ids['attention_mask']).to(device)
         with torch.no_grad():
-            embeddings, _ = model(token_ids)
-        embeddings = embeddings[:, self._target_protein_idxs].detach().cpu().numpy()
+            embeddings = model(input_ids=input_ids, attention_mask=attention_mask)[0]
+        embeddings = embeddings[:, self._target_protein_idxs].cpu().numpy()
         repr_dict = {labels[idx]: embeddings[idx] for idx in range(embeddings.shape[0])}
         self._embeddings.update(repr_dict)
         return embeddings

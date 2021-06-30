@@ -10,7 +10,7 @@ class OneHot(fasthit.Encoder):
     def __init__(self, alphabet: str):
         super().__init__("onehot", alphabet, len(alphabet))
 
-    def encode(self, sequences: Sequence[str]) -> np.array:
+    def encode(self, sequences: Sequence[str]) -> np.ndarray:
         ### [bsz, seq_length, n_features]
         return np.array(
             [s_utils.string_to_one_hot(seq, self.alphabet) for seq in sequences],

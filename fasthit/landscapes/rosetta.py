@@ -1,6 +1,6 @@
 """Defines the RosettaFolding landscape and problem registry."""
 import os
-from typing import Dict, List
+from typing import Dict, Sequence
 
 import numpy as np
 import torch
@@ -101,28 +101,28 @@ class RosettaFolding(fasthit.Landscape):
         # This is necessary since sequence identity can only be mutated
         # one residue at a time in Rosetta, because the atom coords of the
         # backbone of the previous residue are copied into the new one.
-        self.pose = prs.pose_from_pdb(pdb_file)
-        self.wt_pose = self.pose.clone()
+        self._pose = prs.pose_from_pdb(pdb_file)
+        self._wt_pose = self._pose.clone()
 
-        # Change self.pose from full-atom to centroid representation
+        # Change self._pose from full-atom to centroid representation
         to_centroid_mover = prs.SwitchResidueTypeSetMover("centroid")
-        to_centroid_mover.apply(self.pose)
+        to_centroid_mover.apply(self._pose)
 
         # Use 1 - sigmoid(centroid energy / norm_value) as the fitness score
-        self.score_function = prs.create_score_function("cen_std")
-        self.sigmoid_center = sigmoid_center
-        self.sigmoid_norm_value = sigmoid_norm_value
+        self._score_function = prs.create_score_function("cen_std")
+        self._sigmoid_center = sigmoid_center
+        self._sigmoid_norm_value = sigmoid_norm_value
 
     def _mutate_pose(self, mut_aa: str, mut_pos: int):
-        """Mutate `self.pose` to contain `mut_aa` at `mut_pos`."""
-        current_residue = self.pose.residue(
+        """Mutate `self._pose` to contain `mut_aa` at `mut_pos`."""
+        current_residue = self._pose.residue(
             mut_pos + 1
         )  # + 1 since rosetta is 1-indexed
-        conformation = self.pose.conformation()
+        conformation = self._pose.conformation()
 
         # Get ResidueType for new residue
         new_restype = prs.rosetta.core.pose.get_restype_for_pose(
-            self.pose, aa_single_to_three_letter_code[mut_aa]
+            self._pose, aa_single_to_three_letter_code[mut_aa]
         )
 
         # Create the new residue using current_residue backbone
@@ -143,7 +143,7 @@ class RosettaFolding(fasthit.Landscape):
         )
 
         # Replace residue
-        self.pose.replace_residue(mut_pos + 1, new_res, orient_backbone=False)
+        self._pose.replace_residue(mut_pos + 1, new_res, orient_backbone=False)
 
         # Update the coordinates of atoms that depend on polymer bonds
         conformation.rebuild_polymer_bond_dependent_atoms_this_residue_only(mut_pos + 1)
@@ -151,28 +151,31 @@ class RosettaFolding(fasthit.Landscape):
     def get_folding_energy(self, sequence: str):
         """
         Return rosetta folding energy of the given sequence in
-        `self.pose`'s conformation.
+        `self._pose`'s conformation.
 
         """
-        pose_sequence = self.pose.sequence()
+        pose_sequence = self._pose.sequence()
 
         if len(sequence) != len(pose_sequence):
             raise ValueError(
                 "`sequence` must be of the same length as original protein in .pdb file"
             )
 
-        # Mutate `self.pose` where necessary to have the same sequence identity as
+        # Mutate `self._pose` where necessary to have the same sequence identity as
         # `sequence`
         for i, aa in enumerate(sequence):
             if aa != pose_sequence[i]:
                 self._mutate_pose(aa, i)
 
-        return self.score_function(self.pose)
+        return self._score_function(self._pose)
 
-    def _fitness_function(self, sequences: List[str]) -> np.ndarray:
+    def _fitness_function(self, sequences: Sequence[str]) -> np.ndarray:
         """Negate and normalize folding energy to get maximization objective"""
-        energies = torch.tensor([self.get_folding_energy(seq) for seq in sequences])
-        scaled_energies = (-energies - self.sigmoid_center) / self.sigmoid_norm_value
+        energies = torch.tensor(
+            [self.get_folding_energy(seq) for seq in sequences],
+            dtype=torch.float32
+        )
+        scaled_energies = (-energies - self._sigmoid_center) / self._sigmoid_norm_value
         return torch.sigmoid(scaled_energies).numpy()
 
 
@@ -202,13 +205,13 @@ def registry() -> Dict[str, Dict]:
                 "sigmoid_center": -3,
                 "sigmoid_norm_value": 12,
             },
-            "starts": {
-                "ed_3_wt": "MAQASVVANQLIPINTHLTLVMMRSEVVTYVHIPAEDIPRLVSMDVNRAVPLGTTLMPDMVKGYAA",  # noqa: E501
-                "ed_5_wt": "MAQASVVFNQLIPINTHLTLVMMRFEVVTPVGCPAMDIPRLVSQQVNRAVPLGTTLMPDMVKGYAA",  # noqa: E501
-                "ed_7_wt": "WAQRSVVANQLIPINTGLTLVMMRSELVTGVGAPAEDIPRLVSMQVNRAVPLGTTNMPDMVKGYAA",  # noqa: E501
-                "ed_12_wt": "RAQESVVANQLIPILTHLTQKMSRRFVVTPVGIPAEDIPRLVNAQVDRAVPLGTTLMPDMDKGYAA",  # noqa: E501
-                "ed_27_wt": "MRRYSVIAYQERPINLHSTLTFNRSEVPWPVNRPASDAPRLVSMQNNRSVPLGTKLPEDPVCRYAL",  # noqa: E501
-            },
+            "starts": [
+                "MAQASVVANQLIPINTHLTLVMMRSEVVTYVHIPAEDIPRLVSMDVNRAVPLGTTLMPDMVKGYAA",  # noqa: E501
+                "MAQASVVFNQLIPINTHLTLVMMRFEVVTPVGCPAMDIPRLVSQQVNRAVPLGTTLMPDMVKGYAA",  # noqa: E501
+                "WAQRSVVANQLIPINTGLTLVMMRSELVTGVGAPAEDIPRLVSMQVNRAVPLGTTNMPDMVKGYAA",  # noqa: E501
+                "RAQESVVANQLIPILTHLTQKMSRRFVVTPVGIPAEDIPRLVNAQVDRAVPLGTTLMPDMDKGYAA",  # noqa: E501
+                "MRRYSVIAYQERPINLHSTLTFNRSEVPWPVNRPASDAPRLVSMQNNRSVPLGTKLPEDPVCRYAL",  # noqa: E501
+            ],
         },
         "3mx7": {
             "params": {
@@ -216,12 +219,12 @@ def registry() -> Dict[str, Dict]:
                 "sigmoid_center": -3,
                 "sigmoid_norm_value": 12,
             },
-            "starts": {
-                "ed_2_wt": "MTDLVAVWDVALSDGHHKIEFEHGTTSGKRVVYVDGKESIRKEWMFKLVGKETFYVGAAKTKATINIDAISGFAYEYTLEINGKSLKKYM",  # noqa: E501
-                "ed_5_wt": "MTDLVAVWFYALSDGVHKIEFEHGTTSGKRVVYVDGKEEIRKEWMFKLVGKETFYVGAAKTKATINIWAISGFAIEYTLTINGKSLKKYM",  # noqa: E501
-                "ed_7_wt": "MTDLVAYWDVANSDGVHKISFEHGTTSGKRVVYVDGKEEIRKEGMFKLVGRETFYVGAAKTKATINIDAGSGFAYEYTLEINGKVLKKYM",  # noqa: E501
-                "ed_13_wt": "VTDKSAVWDVALSDGVHKIEFEHGTTSIKRVVYVQGKEENRKEWQFKGVGKETFYVGAAKRKATINIDAKSGFAYEVTLEINQKSLKQYM",  # noqa: E501
-                "ed_29_wt": "STDLVEVMRIACSDGVHKIEFEHGTTSGMRVHYKDLKEEGRKPHRFKLEGNFQWYENCHKTKAIINITAIMGFAYWYFLEWNGKSLKKYM",  # noqa: E501
-            },
+            "starts": [
+                "MTDLVAVWDVALSDGHHKIEFEHGTTSGKRVVYVDGKESIRKEWMFKLVGKETFYVGAAKTKATINIDAISGFAYEYTLEINGKSLKKYM",  # noqa: E501
+                "MTDLVAVWFYALSDGVHKIEFEHGTTSGKRVVYVDGKEEIRKEWMFKLVGKETFYVGAAKTKATINIWAISGFAIEYTLTINGKSLKKYM",  # noqa: E501
+                "MTDLVAYWDVANSDGVHKISFEHGTTSGKRVVYVDGKEEIRKEGMFKLVGRETFYVGAAKTKATINIDAGSGFAYEYTLEINGKVLKKYM",  # noqa: E501
+                "VTDKSAVWDVALSDGVHKIEFEHGTTSIKRVVYVQGKEENRKEWQFKGVGKETFYVGAAKRKATINIDAKSGFAYEVTLEINQKSLKQYM",  # noqa: E501
+                "STDLVEVMRIACSDGVHKIEFEHGTTSGMRVHYKDLKEEGRKPHRFKLEGNFQWYENCHKTKAIINITAIMGFAYWYFLEWNGKSLKKYM",  # noqa: E501
+            ],
         },
     }

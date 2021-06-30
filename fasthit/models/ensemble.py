@@ -66,14 +66,14 @@ class Ensemble(fasthit.Model):
             return
 
         (train_X, test_X, train_y, test_y,) = model_selection.train_test_split(
-            np.array(X), np.array(y), test_size=self.adaptive_val_size
+            np.array(X), np.array(y), test_size=self._adaptive_val_size
         )
 
         for model in self._models:
             model.train(train_X, train_y)
 
         preds = np.stack([model.get_fitness(test_X) for model in self.models], axis=0)
-        self._weights = self.adapt_weights_with(preds, test_y)
+        self._weights = self._adapt_weights_with(preds, test_y)
 
     def _fitness_function(self, X: np.ndarray) -> np.ndarray:
         scores = np.stack(

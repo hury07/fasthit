@@ -53,26 +53,26 @@ class Explorer(abc.ABC):
             log_file: .csv filepath to write output.
 
         """
-        self.name = name
-        self.encoder = encoder
-        self.model = model
-        self.training_data_size = training_data_size
+        self._name = name
+        self._encoder = encoder
+        self._model = model
+        self._training_data_size = training_data_size
 
-        self.rounds = rounds
-        self.expmt_queries_per_round = expmt_queries_per_round
-        self.model_queries_per_round = model_queries_per_round
-        self.starting_sequence = starting_sequence
+        self._rounds = rounds
+        self._expmt_queries_per_round = expmt_queries_per_round
+        self._model_queries_per_round = model_queries_per_round
+        self._starting_sequence = starting_sequence
 
-        self.log_file = log_file
-        if self.log_file is not None:
-            dir_path, _ = os.path.split(self.log_file)
+        self._log_file = log_file
+        if self._log_file is not None:
+            dir_path, _ = os.path.split(self._log_file)
             os.makedirs(dir_path, exist_ok=True)
 
     @abc.abstractmethod
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame,
-        landscape: fasthit.Landscape,
+        landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """
         Propose a list of sequences to be measured in the next round.
@@ -106,8 +106,8 @@ class Explorer(abc.ABC):
         verbose: bool,
         round_start_time: float,
     ) -> None:
-        if self.log_file is not None:
-            with open(self.log_file, "w") as f:
+        if self._log_file is not None:
+            with open(self._log_file, "w") as f:
                 # First write metadata
                 json.dump(metadata, f)
                 f.write("\n")
@@ -134,27 +134,28 @@ class Explorer(abc.ABC):
             verbose: Whether to print output or not.
 
         """
-        self.model.cost = 0
+        self._model.cost = 0
 
         # Metadata about run that will be used for logging purposes
         metadata = {
             "run_id": datetime.now().strftime("%H:%M:%S-%m/%d/%Y"),
-            "exp_name": self.name,
-            "model_name": self.model.name,
+            "exp_name": self._name,
+            "encoder_name": self._encoder.name,
+            "model_name": self._model.name,
             "landscape_name": landscape.name,
-            "rounds": self.rounds,
-            "expmt_queries_per_round": self.expmt_queries_per_round,
-            "model_queries_per_round": self.model_queries_per_round,
+            "rounds": self._rounds,
+            "expmt_queries_per_round": self._expmt_queries_per_round,
+            "model_queries_per_round": self._model_queries_per_round,
         }
 
         # Initial sequences and their scores
         measured_data = pd.DataFrame(
             {
-                "sequence": self.starting_sequence,
+                "sequence": self._starting_sequence,
                 "model_score": np.nan,
-                "true_score": landscape.get_fitness([self.starting_sequence]),
+                "true_score": landscape.get_fitness([self._starting_sequence]),
                 "round": 0,
-                "model_cost": self.model.cost,
+                "model_cost": self._model.cost,
                 "measurement_cost": 1,
             }
         )
@@ -164,19 +165,19 @@ class Explorer(abc.ABC):
         # For each round, train model on available data, propose sequences,
         # measure them on the true landscape, add to available data, and repeat.
         range_iterator = range if verbose else tqdm.trange
-        for r in range_iterator(1, self.rounds + 1):
+        for r in range_iterator(1, self._rounds + 1):
             round_start_time = time.time()
 
-            encodings = self.encoder.encode(training_data["sequence"].to_list())
+            encodings = self._encoder.encode(training_data["sequence"].to_list())
             labels = training_data["true_score"].to_numpy()
-            self.model.train(encodings, labels)
+            self._model.train(encodings, labels)
 
             measured_data, seqs, preds = self.propose_sequences(measured_data, landscape)
             true_score = landscape.get_fitness(seqs)
 
-            if len(seqs) > self.expmt_queries_per_round:
+            if len(seqs) > self._expmt_queries_per_round:
                 warnings.warn(
-                    "Must propose <= `self.expmt_queries_per_round` sequences per round"
+                    "Must propose <= `self._expmt_queries_per_round` sequences per round"
                 )
 
             measured_data = measured_data.append(
@@ -186,7 +187,7 @@ class Explorer(abc.ABC):
                         "model_score": preds,
                         "true_score": true_score,
                         "round": r,
-                        "model_cost": self.model.cost,
+                        "model_cost": self._model.cost,
                         "measurement_cost": len(measured_data) + len(seqs),
                     }
                 )
@@ -196,3 +197,27 @@ class Explorer(abc.ABC):
             training_data = self.get_training_data(measured_data)
 
         return measured_data, metadata
+    
+    @property
+    def encoder(self):
+        return self._encoder
+    
+    @property
+    def model(self):
+        return self._model
+
+    @property
+    def starting_sequence(self):
+        return self._starting_sequence
+        
+    @property
+    def expmt_queries_per_round(self):
+        return self._expmt_queries_per_round
+    
+    @property
+    def model_queries_per_round(self):
+        return self._model_queries_per_round
+    
+    @property
+    def training_data_size(self):
+        return self._training_data_size

@@ -41,12 +41,12 @@ class MLDE(fasthit.Explorer):
             log_file=log_file,
         )
 
-        self.alphabet = alphabet
+        self._alphabet = alphabet
 
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame,
-        landscape: fasthit.Landscape,
+        landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         last_round = measured_sequences["round"].max()
         if last_round == 0:
@@ -120,7 +120,7 @@ class MLDE(fasthit.Explorer):
         top_idx = new_fitness.argmax()
         top_seq = new_seqs[top_idx]
         ### shrink the search space by Combinatorial Directed Evolution
-        search_pattern = len(top_seq) * ["[A-Z]"] ### TODO determined by self.alphabet
+        search_pattern = len(top_seq) * ["[A-Z]"] ### TODO determined by self._alphabet
         for i in range(len(top_seq)):
             if self.starting_sequence[i] != top_seq[i]:
                 search_pattern[i] = top_seq[i]

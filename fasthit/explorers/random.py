@@ -59,15 +59,15 @@ class Random(fasthit.Explorer):
             training_data_size,
             log_file,
         )
-        self.mu = mu
-        self.rng = np.random.default_rng(seed)
-        self.alphabet = alphabet
-        self.elitist = elitist
+        self._mu = mu
+        self._rng = np.random.default_rng(seed)
+        self._alphabet = alphabet
+        self._elitist = elitist
 
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame,
-        landscape: fasthit.Landscape,
+        landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
         old_sequences = measured_sequences["sequence"]
@@ -75,9 +75,9 @@ class Random(fasthit.Explorer):
         new_seqs = set()
 
         while len(new_seqs) <= self.model_queries_per_round:
-            seq = self.rng.choice(old_sequences)
+            seq = self._rng.choice(old_sequences)
             new_seq = s_utils.generate_random_mutant(
-                seq, self.mu / len(seq), alphabet=self.alphabet
+                seq, self._mu / len(seq), alphabet=self._alphabet
             )
 
             if new_seq not in old_sequence_set:
@@ -87,10 +87,10 @@ class Random(fasthit.Explorer):
         encodings = self.encoder.encode(new_seqs.tolist())
         preds = self.model.get_fitness(encodings)
 
-        if self.elitist:
+        if self._elitist:
             idxs = np.argsort(preds)[: -self.expmt_queries_per_round : -1]
         else:
-            idxs = self.rng.integers(0, len(new_seqs), size=self.expmt_queries_per_round)
+            idxs = self._rng.integers(0, len(new_seqs), size=self.expmt_queries_per_round)
 
         return measured_sequences, new_seqs[idxs], preds[idxs]
 

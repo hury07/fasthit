@@ -41,10 +41,8 @@ class GPRegressor(fasthit.Model):
     ):
         ###
         X = X.reshape(X.shape[0], X.shape[1] * X.shape[2])
+        y = y.astype(np.float32)
         ###
-        if verbose:
-            print('Fitting GP model on {} data points with dimension {}...'
-                   .format(*X.shape))
         # scikit-learn backend.
         if self._backend == 'sklearn':
             self._model = GaussianProcessRegressor(
@@ -93,8 +91,6 @@ class GPRegressor(fasthit.Model):
                     print('Iter {}/{} - Loss: {:.3f}'
                            .format(i + 1, training_iterations, loss.item()))
                 optimizer.step()
-        if verbose:
-            print('Done fitting GP model.')
 
     def _fitness_function(self, X: np.ndarray) -> np.ndarray:
         ###
@@ -123,7 +119,6 @@ class GPRegressor(fasthit.Model):
                  gpytorch.settings.fast_pred_var(), \
                  gpytorch.settings.max_root_decomposition_size(35):
                 preds = self._model(X)
-
             mean = preds.mean.detach().cpu().numpy()
             var = preds.variance.detach().cpu().numpy()
         self._uncertainties = var.flatten()

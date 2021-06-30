@@ -32,17 +32,17 @@ _gg_19 = {'Q': 0.92, 'L': 1.01, 'T': -0.73, 'C': -1.05, 'I': -4.18, 'G': 0.05, '
 
 class Georgiev(fasthit.Encoder):
     def __init__(self, alphabet: str):
-        self.georgiev_params = [
+        self._georgiev_params = tuple([
             _gg_1, _gg_2, _gg_3, _gg_4, _gg_5, _gg_6, _gg_7, _gg_8, _gg_9, _gg_10,
             _gg_11, _gg_12, _gg_13, _gg_14, _gg_15, _gg_16, _gg_17, _gg_18, _gg_19
-        ]
-        super().__init__("georgiev", alphabet, len(self.georgiev_params))
+        ])
+        super().__init__("georgiev", alphabet, len(self._georgiev_params))
 
-    def encode(self, sequences: Sequence[str]) -> np.array:
+    def encode(self, sequences: Sequence[str]) -> np.ndarray:
         return np.array(
             [
                 [
-                    [georgiev_param[character] for georgiev_param in self.georgiev_params]
+                    [georgiev_param[character] for georgiev_param in self._georgiev_params]
                     for character in seq
                 ]
             for seq in sequences

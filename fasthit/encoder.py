@@ -15,11 +15,27 @@ class Encoder(abc.ABC):
     ):
         super().__init__()
 
-        self.name = name
-        self.alphabet = alphabet
-        self.n_features = n_features
-        self.batch_size = batch_size
+        self._name = name
+        self._alphabet = alphabet
+        self._n_features = n_features
+        self._batch_size = batch_size
 
     @abc.abstractmethod
-    def encode(self, sequences: Sequence[str]) -> np.array:
+    def encode(self, sequences: Sequence[str]) -> np.ndarray:
         pass
+    
+    @property
+    def name(self):
+        return self._name
+    
+    @property
+    def alphabet(self):
+        return self._alphabet
+    
+    @property
+    def n_features(self):
+        return self._n_features
+    
+    @property
+    def batch_size(self):
+        return self._batch_size

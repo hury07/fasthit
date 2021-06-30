@@ -1,6 +1,4 @@
 """Define the base PytorchModel class."""
-#from typing import Callable
-
 import numpy as np
 import torch.nn as nn
 from skorch import NeuralNet
@@ -15,8 +13,6 @@ class TorchModel(fasthit.Model):
         self,
         name: str,
         model: nn.Module,
-        #custom_train_function: Callable[[torch.Tensor, torch.Tensor], None] = None,
-        #custom_predict_function: Callable[[torch.Tensor], np.ndarray] = None,
         **fit_params,
     ):
         """
@@ -49,14 +45,14 @@ class TorchModel(fasthit.Model):
         verbose: bool = False,
     ):
         """Train Pytorch model."""
-        y = np.expand_dims(y, axis=1)#.astype(np.float32)
+        y = np.expand_dims(y, axis=1).astype(np.float32)
 
         self._model.set_params(verbose=verbose)
         self._model.fit(X, y)
 
     def _fitness_function(self, X: np.ndarray) -> np.ndarray:
         return np.nan_to_num(
-            self.model.predict(X).squeeze(axis=1)
+            self._model.predict(X).squeeze(axis=1)
         )
     
     @property

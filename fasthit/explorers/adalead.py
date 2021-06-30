@@ -63,9 +63,9 @@ class Adalead(fasthit.Explorer):
             training_data_size,
             log_file,
         )
-        self.alphabet = alphabet
+        self._alphabet = alphabet
         self.threshold = threshold
-        self.recomb_rate = recomb_rate
+        self._recomb_rate = recomb_rate
         self.mu = mu  # number of mutations per *sequence*.
         self.rho = rho
         self.eval_batch_size = eval_batch_size
@@ -82,7 +82,7 @@ class Adalead(fasthit.Explorer):
             strB = []
             switch = False
             for ind in range(len(gen[i])):
-                if random.random() < self.recomb_rate:
+                if random.random() < self._recomb_rate:
                     switch = not switch
 
                 # putting together recombinants
@@ -100,7 +100,7 @@ class Adalead(fasthit.Explorer):
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame,
-        landscape: fasthit.Landscape,
+        landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
         measured_sequence_set = set(measured_sequences["sequence"])
@@ -144,7 +144,7 @@ class Adalead(fasthit.Explorer):
                         child = s_utils.generate_random_mutant(
                             node,
                             self.mu * 1 / len(node),
-                            self.alphabet,
+                            self._alphabet,
                         )
 
                         # Stop when we generate new child that has never been seen
@@ -178,7 +178,7 @@ class Adalead(fasthit.Explorer):
         # We propose the top `self.expmt_queries_per_round` new sequences we have generated
         new_seqs = np.array(list(sequences.keys()))
         preds = np.array(list(sequences.values()))
-        sorted_order = np.argsort(preds)[: -self.expmt_queries_per_round : -1]
+        sorted_order = np.argsort(preds)[: -self.expmt_queries_per_round-1 : -1]
 
         return measured_sequences, new_seqs[sorted_order], preds[sorted_order]
 

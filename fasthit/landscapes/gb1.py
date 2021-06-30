@@ -1,6 +1,6 @@
 """Define GB1 landscape and problem registry."""
 import os
-from typing import Dict, List
+from typing import Dict, Sequence
 
 import numpy as np
 import pandas as pd
@@ -9,11 +9,11 @@ import fasthit
 
 class GB1(fasthit.Landscape):
     """
-    A landscape of stability of protein G domain B1 and the binding affinity to IgG-Fc.
+    A landscape of stability of protein G domain B1 and the bidxsing affinity to IgG-Fc.
 
     We use experimental and imputed data from Wu et al. (2016).
     """
-    wt = (
+    _wt = (
         "MTYKLILNGK"
         "TLKGETTTEA"
         "VDAATAEKVF"
@@ -55,28 +55,34 @@ class GB1(fasthit.Landscape):
         score = data["Fitness"] # WT score is set to 1.
         norm_score = (score - score.min()) / (score.max() - score.min())
 
-        self.sequences = dict(zip(data["Variants"], norm_score))
+        self._sequences = dict(zip(data["Variants"], norm_score))
 
         combo = search_space.split(",")
-        self.combo_wt = [ind[0] for ind in combo]
-        self.combo_protein_inds = [int(ind[1:]) for ind in combo]
-        self.combo_python_inds = [ind - 1 for ind in self.combo_protein_inds]
+        temp_seq = [idxs[0] for idxs in combo]
+        self._combo_protein_idxs = [int(idxs[1:]) for idxs in combo]
+        self._combo_python_idxs = [idxs - 1 for idxs in self._combo_protein_idxs]
         
         assert all([
-            self.wt[self.combo_python_inds[i]] == self.combo_wt[i] for i in range(len(self.combo_wt))
+            self._wt[self._combo_python_idxs[i]] == temp_seq[i] for i in range(len(temp_seq))
         ])
 
-        """
-        self.template = [c for c in self.wt]
-        for i in self.combo_python_inds:
-            self.template[i] = "X"
-        """
-
-    def _fitness_function(self, sequences: List[str]) -> np.ndarray:
+    def _fitness_function(self, sequences: Sequence[str]) -> np.ndarray:
         return np.array(
-            [self.sequences[seq] for seq in sequences],
+            [self._sequences[seq] for seq in sequences],
             dtype=np.float32
         )
+    
+    @property
+    def wt(self):
+        return self._wt
+    
+    @property
+    def combo_protein_idxs(self):
+        return self._combo_protein_idxs
+    
+    @property
+    def combo_python_idxs(self):
+        return self._combo_python_idxs
 
 
 def registry() -> Dict[str, Dict]:
