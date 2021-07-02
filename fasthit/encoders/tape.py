@@ -4,6 +4,7 @@ from typing import Sequence
 import math
 import numpy as np
 import pandas as pd
+import torch
 
 import fasthit
 
@@ -34,13 +35,13 @@ class TAPE(fasthit.Encoder):
         self._encoding = encodings.loc[encoding]
         self._wt_seq = wt_seq
         self._target_python_idxs = target_python_idxs
-        self._nogpu = nogpu
         self._embeddings = {}
 
+        self._device = torch.device('cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu')
         import tape
         self._tokenizer = tape.TAPETokenizer(vocab='iupac')
         if self._encoding["model"] in ["bert-base"]:
-            self._pretraind_model = tape.ProteinBertModel.from_pretrained(self._encoding["model"]) 
+            self._pretraind_model = tape.ProteinBertModel.from_pretrained(self._encoding["model"])
             self._target_protein_idxs = [idx + 1 for idx in target_python_idxs]
         elif self._encoding["model"] in ["babbler-1900"]:
             self._pretraind_model = tape.UniRepModel.from_pretrained(self._encoding["model"])
@@ -49,6 +50,8 @@ class TAPE(fasthit.Encoder):
         elif self._encoding["model"] in ["xaa", "xab", "xac", "xad", "xae"]:
             self._pretraind_model = tape.TRRosetta.from_pretrained(self._encoding["model"])
             self._target_protein_idxs = [idx + 1 for idx in target_python_idxs] # TODO check
+        self._pretraind_model = self._pretraind_model.to(self._device)
+        self._pretraind_model.eval()
 
         super().__init__(
             name,
@@ -95,16 +98,13 @@ class TAPE(fasthit.Encoder):
         sequences: Sequence[str],
         labels: Sequence[str],
     ) -> np.ndarray:
-        ###
-        import torch
-        ###
-        device = torch.device('cuda:0' if torch.cuda.is_available() and not self._nogpu else 'cpu')
-        model = self._pretraind_model.to(device)
-        model.eval()
-        token_ids = torch.tensor([self._tokenizer.encode(seq) for seq in sequences], device=device)
+        token_ids = torch.tensor(
+            [self._tokenizer.encode(seq) for seq in sequences], device=self._device
+        )
         with torch.no_grad():
-            embeddings, _ = model(token_ids)
+            embeddings, _ = self._pretraind_model(token_ids)
         embeddings = embeddings[:, self._target_protein_idxs].detach().cpu().numpy()
         repr_dict = {labels[idx]: embeddings[idx] for idx in range(embeddings.shape[0])}
         self._embeddings.update(repr_dict)
+        torch.cuda.empty_cache()
         return embeddings

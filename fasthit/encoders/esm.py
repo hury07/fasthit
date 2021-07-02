@@ -5,6 +5,7 @@ from typing import Sequence
 import math
 import numpy as np
 import pandas as pd
+import torch
 
 import fasthit
 
@@ -40,13 +41,15 @@ class ESM(fasthit.Encoder):
         self._encoding = encodings.loc[encoding]
         self._wt_seq = wt_seq
         self._target_python_idxs = target_python_idxs
-        self._nogpu = nogpu
         self._embeddings = {}
         
+        self._device = torch.device('cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu')
         from esm import pretrained
         self._pretrained_model, self._esm_alphabet = pretrained.load_model_and_alphabet(
             pretrained_model_dir + self._encoding["model"]+".pt"
         )
+        self._pretrained_model = self._pretrained_model.to(self._device)
+        self._pretrained_model.eval()
         self._target_protein_idxs = [idx + 1 for idx in target_python_idxs]
         ### For MSA-Transformer
         if self._encoding.name in ["esm-msa-1"]:
@@ -108,7 +111,6 @@ class ESM(fasthit.Encoder):
         toks_per_batch: int = 4096,
     ) -> np.ndarray:
         ###
-        import torch
         from esm import FastaBatchedDataset
         ###
         dataset = FastaBatchedDataset(labels, sequences)
@@ -117,16 +119,14 @@ class ESM(fasthit.Encoder):
             dataset, collate_fn=self._esm_alphabet.get_batch_converter(), batch_sampler=batches
         )
         ###
-        device = torch.device('cuda:0' if torch.cuda.is_available() and not self._nogpu else 'cpu')
-        model = self._pretrained_model.to(device)
-        model.eval()
-        ###
         results = []
         for labels, _, toks in data_loader:
-            toks = toks.to(device)
+            toks = toks.to(self._device)
             with torch.no_grad():
-                out = model(toks, repr_layers=[model.num_layers], return_contacts=False)
-            embeddings = out["representations"][model.num_layers]
+                out = self._pretrained_model(
+                    toks, repr_layers=[self._pretrained_model.num_layers], return_contacts=False
+                )
+            embeddings = out["representations"][self._pretrained_model.num_layers]
             if embeddings.ndim == 4:
                 # query_sequence at the last row of MSA
                 embeddings = embeddings[:, -1]
@@ -135,6 +135,7 @@ class ESM(fasthit.Encoder):
             repr_dict = {labels[idx]: embeddings[idx] for idx in range(embeddings.shape[0])}
             self._embeddings.update(repr_dict)
             results.append(embeddings)
+        torch.cuda.empty_cache()
         return np.concatenate(results, axis=0)
     
     def _embed_msa(

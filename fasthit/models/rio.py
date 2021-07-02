@@ -9,15 +9,14 @@ class RIO(fasthit.Model):
     def __init__(
         self,
         mean_module: Union[TorchModel, SklearnModel],
-        uncertainty_module: GPRegressor,
         name: str = None,
     ):
         if name is None:
-            name = f"{mean_module.name}_{uncertainty_module.name}"
+            name = f"{mean_module.name}_GP_gpytorch"
         super().__init__(name)
 
         self._mean_module = mean_module
-        self._uncertainty_module = uncertainty_module
+        self._uncertainty_module = GPRegressor(backend="gpytorch", kernel="IOK")
     
     def train(
         self,
@@ -26,12 +25,12 @@ class RIO(fasthit.Model):
         verbose: bool = False,
     ) -> np.ndarray:
         self._mean_module.train(X, y, verbose=verbose)
-        residual = y - self._mean_module.get_fitness(X)
-        self._uncertainty_module.train(X, residual, verbose=verbose)
+        y_hat = self._mean_module.get_fitness(X)
+        self._uncertainty_module.train([X, y_hat], y - y_hat, verbose=verbose)
 
     def _fitness_function(self, X: np.ndarray) -> np.ndarray:
         y_hat = self._mean_module.get_fitness(X)
-        residual = self._uncertainty_module.get_fitness(X)
+        residual = self._uncertainty_module.get_fitness([X, y_hat])
         return np.nan_to_num(
             y_hat + residual
         )

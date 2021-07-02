@@ -53,6 +53,9 @@ class Explorer(abc.ABC):
             log_file: .csv filepath to write output.
 
         """
+        assert expmt_queries_per_round >= training_data_size
+        assert expmt_queries_per_round <= model_queries_per_round
+        ###
         self._name = name
         self._encoder = encoder
         self._model = model

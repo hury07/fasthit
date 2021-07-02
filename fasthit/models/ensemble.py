@@ -17,8 +17,8 @@ class Ensemble(fasthit.Model):
     def __init__(
         self,
         models: List[fasthit.Model],
-        combine_with="sum",
-        adapt_weights_with="r2_weights",
+        combine_with: str = "sum",
+        adapt_weights_with: str = "r2_weights",
         adaptive_val_size: float = 0.2,
     ):
         """

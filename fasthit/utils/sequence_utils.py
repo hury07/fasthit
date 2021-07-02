@@ -1,6 +1,5 @@
 """Utility functions for manipulating sequences."""
-import random
-from typing import List, Union
+from typing import List, Sequence, Union
 
 import numpy as np
 
@@ -77,14 +76,21 @@ def generate_single_mutants(wt: str, alphabet: str) -> List[str]:
     return sequences
 
 
-def generate_random_sequences(length: int, number: int, alphabet: str) -> List[str]:
+def generate_random_sequences(
+    length: int,
+    number: int,
+    alphabet: Sequence[str],
+) -> List[str]:
     """Generate random sequences of particular length."""
     return [
-        "".join([random.choice(alphabet) for _ in range(length)]) for _ in range(number)
+        "".join([np.random.choice(alphabet) for _ in range(length)]) for _ in range(number)
     ]
 
-
-def generate_random_mutant(sequence: str, mu: float, alphabet: str) -> str:
+def generate_random_mutant(
+    sequence: str,
+    mu: float,
+    alphabet: Sequence[str],
+) -> str:
     """
     Generate a mutant of `sequence` where each residue mutates with probability `mu`.
 
@@ -101,8 +107,8 @@ def generate_random_mutant(sequence: str, mu: float, alphabet: str) -> str:
     """
     mutant = []
     for s in sequence:
-        if random.random() < mu:
-            mutant.append(random.choice(alphabet))
+        if np.random.rand() < mu:
+            mutant.append(np.random.choice(alphabet))
         else:
             mutant.append(s)
     return "".join(mutant)

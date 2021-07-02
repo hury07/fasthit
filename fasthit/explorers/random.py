@@ -32,7 +32,6 @@ class Random(fasthit.Explorer):
         alphabet: str = s_utils.AAS,
         mu: float = 1,
         elitist: bool = False,
-        seed: Optional[int] = None,
     ):
         """
         Create a random search explorer.
@@ -60,7 +59,6 @@ class Random(fasthit.Explorer):
             log_file,
         )
         self._mu = mu
-        self._rng = np.random.default_rng(seed)
         self._alphabet = alphabet
         self._elitist = elitist
 
@@ -73,27 +71,24 @@ class Random(fasthit.Explorer):
         old_sequences = measured_sequences["sequence"]
         old_sequence_set = set(old_sequences)
         new_seqs = set()
-
         while len(new_seqs) <= self.model_queries_per_round:
-            seq = self._rng.choice(old_sequences)
+            seq = np.random.choice(old_sequences)
             new_seq = s_utils.generate_random_mutant(
-                seq, self._mu / len(seq), alphabet=self._alphabet
+                seq,
+                self._mu / len(seq),
+                alphabet=list(self._alphabet)
             )
-
             if new_seq not in old_sequence_set:
                 new_seqs.add(new_seq)
-
         new_seqs = np.array(list(new_seqs))
         encodings = self.encoder.encode(new_seqs.tolist())
         preds = self.model.get_fitness(encodings)
-
         if self._elitist:
             idxs = np.argsort(preds)[: -self.expmt_queries_per_round : -1]
         else:
-            idxs = self._rng.integers(0, len(new_seqs), size=self.expmt_queries_per_round)
-
+            idxs = np.random.randint(0, len(new_seqs), size=self.expmt_queries_per_round)
         return measured_sequences, new_seqs[idxs], preds[idxs]
-
+    """
     def get_training_data(
         self,
         measured_sequences: pd.DataFrame,
@@ -106,3 +101,9 @@ class Random(fasthit.Explorer):
         idxs = np.random.choice(eval_size, self.training_data_size, replace=False)
         sampled_seqs = filtered_seqs.loc[idxs]
         return sampled_seqs
+    """
+    def get_training_data(
+        self,
+        measured_sequences: pd.DataFrame,
+    ) -> pd.DataFrame:
+        return measured_sequences

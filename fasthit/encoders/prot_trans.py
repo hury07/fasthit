@@ -5,6 +5,7 @@ from typing import Sequence
 import math
 import numpy as np
 import pandas as pd
+import torch
 
 import fasthit
 
@@ -34,9 +35,9 @@ class ProtTrans(fasthit.Encoder):
         self._encoding = encodings.loc[encoding]
         self._wt_seq = wt_seq
         self._target_python_idxs = target_python_idxs
-        self._nogpu = nogpu
         self._embeddings = {}
 
+        self._device = torch.device('cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu')
         if encoding in ["prot_bert_bfd"]:
             from transformers import BertModel, BertTokenizer
             self._tokenizer = BertTokenizer.from_pretrained(f"Rostlab/{encoding}", do_lower_case=False)
@@ -49,7 +50,8 @@ class ProtTrans(fasthit.Encoder):
             self._target_protein_idxs = target_python_idxs
         else:
             pass
-
+        self._pretrained_model = self._pretrained_model.to(self._device)
+        self._pretrained_model.eval()
         super().__init__(
             name,
             alphabet,
@@ -97,18 +99,15 @@ class ProtTrans(fasthit.Encoder):
         sequences: Sequence[str],
         labels: Sequence[str],
     ) -> np.ndarray:
-        ###
-        import torch
-        ###
-        device = torch.device('cuda:0' if torch.cuda.is_available() and not self._nogpu else 'cpu')
-        model = self._pretrained_model.to(device)
-        model = model.eval()
-        ids = self._tokenizer.batch_encode_plus(sequences, add_special_tokens=True, pad_to_max_length=True)
-        input_ids = torch.tensor(ids['input_ids']).to(device)
-        attention_mask = torch.tensor(ids['attention_mask']).to(device)
+        ids = self._tokenizer.batch_encode_plus(
+            sequences, add_special_tokens=True, pad_to_max_length=True
+        )
+        input_ids = torch.tensor(ids['input_ids']).to(self._device)
+        attention_mask = torch.tensor(ids['attention_mask']).to(self._device)
         with torch.no_grad():
-            embeddings = model(input_ids=input_ids, attention_mask=attention_mask)[0]
+            embeddings = self._pretrained_model(input_ids=input_ids, attention_mask=attention_mask)[0]
         embeddings = embeddings[:, self._target_protein_idxs].cpu().numpy()
         repr_dict = {labels[idx]: embeddings[idx] for idx in range(embeddings.shape[0])}
         self._embeddings.update(repr_dict)
+        torch.cuda.empty_cache()
         return embeddings

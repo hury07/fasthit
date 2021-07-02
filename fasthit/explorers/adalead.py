@@ -1,5 +1,4 @@
 """Defines the Adalead explorer class."""
-import random
 from typing import Optional, Tuple
 
 import numpy as np
@@ -27,14 +26,14 @@ class Adalead(fasthit.Explorer):
         encoder: fasthit.Encoder,
         model: fasthit.Model,
         rounds: int,
-        expmt_queries_per_round: int,
-        model_queries_per_round: int,
+        expmt_queries_per_round: int, # default: 384
+        model_queries_per_round: int, # default: 400
         training_data_size: int,
         starting_sequence: str,
         log_file: Optional[str] = None,
         alphabet: str = s_utils.AAS,
         mu: int = 1,
-        recomb_rate: float = 0.,
+        recomb_rate: float = 0,
         threshold: float = 0.05,
         rho: int = 0,
         eval_batch_size: int = 20,
@@ -64,27 +63,26 @@ class Adalead(fasthit.Explorer):
             log_file,
         )
         self._alphabet = alphabet
-        self.threshold = threshold
+        self._threshold = threshold
         self._recomb_rate = recomb_rate
-        self.mu = mu  # number of mutations per *sequence*.
-        self.rho = rho
-        self.eval_batch_size = eval_batch_size
+        self._mu = mu  # number of mutations per *sequence*.
+        self._rho = rho
+        self._eval_batch_size = eval_batch_size
 
     def _recombine_population(self, gen):
         # If only one member of population, can't do any recombining
         if len(gen) == 1:
             return gen
 
-        random.shuffle(gen)
+        np.random.shuffle(gen)
         ret = []
         for i in range(0, len(gen) - 1, 2):
             strA = []
             strB = []
             switch = False
             for ind in range(len(gen[i])):
-                if random.random() < self._recomb_rate:
+                if np.random.rand() < self._recomb_rate:
                     switch = not switch
-
                 # putting together recombinants
                 if switch:
                     strA.append(gen[i][ind])
@@ -92,7 +90,6 @@ class Adalead(fasthit.Explorer):
                 else:
                     strB.append(gen[i][ind])
                     strA.append(gen[i + 1][ind])
-
             ret.append("".join(strA))
             ret.append("".join(strB))
         return ret
@@ -104,49 +101,42 @@ class Adalead(fasthit.Explorer):
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
         measured_sequence_set = set(measured_sequences["sequence"])
-
-        # Get all sequences within `self.threshold` percentile of the top_fitness
+        # Get all sequences within `self._threshold` percentile of the top_fitness
         top_fitness = measured_sequences["true_score"].max()
         top_inds = measured_sequences["true_score"] >= top_fitness * (
-            1 - np.sign(top_fitness) * self.threshold
+            1 - np.sign(top_fitness) * self._threshold
         )
-
         parents = np.resize(
             measured_sequences["sequence"][top_inds].to_numpy(),
             self.expmt_queries_per_round,
         )
-
         sequences = {}
         previous_model_cost = self.model.cost
         while self.model.cost - previous_model_cost < self.model_queries_per_round:
             # generate recombinant mutants
-            for i in range(self.rho):
+            for i in range(self._rho):
                 parents = self._recombine_population(parents)
-
-            for i in range(0, len(parents), self.eval_batch_size):
+            for i in range(0, len(parents), self._eval_batch_size):
                 # Here we do rollouts from each parent (root of rollout tree)
-                roots = parents[i : i + self.eval_batch_size]
+                roots = parents[i : i + self._eval_batch_size]
                 encodings = self.encoder.encode(roots)
                 root_fitnesses = self.model.get_fitness(encodings)
-
                 nodes = list(enumerate(roots))
-
                 while (
                     len(nodes) > 0
-                    and self.model.cost - previous_model_cost + self.eval_batch_size
+                    and self.model.cost - previous_model_cost + self._eval_batch_size
                     < self.model_queries_per_round
                 ):
                     child_idxs = []
                     children = []
                     while len(children) < len(nodes):
                         idx, node = nodes[len(children) - 1]
-
+                        # random generation
                         child = s_utils.generate_random_mutant(
                             node,
-                            self.mu * 1 / len(node),
-                            self._alphabet,
+                            self._mu / len(node),
+                            list(self._alphabet),
                         )
-
                         # Stop when we generate new child that has never been seen
                         # before
                         if (
@@ -155,7 +145,6 @@ class Adalead(fasthit.Explorer):
                         ):
                             child_idxs.append(idx)
                             children.append(child)
-
                     # Stop the rollout once the child has worse predicted
                     # fitness than the root of the rollout tree.
                     # Otherwise, set node = child and add child to the list
@@ -163,34 +152,23 @@ class Adalead(fasthit.Explorer):
                     encodings = self.encoder.encode(children)
                     fitnesses = self.model.get_fitness(encodings)
                     sequences.update(zip(children, fitnesses))
-
                     nodes = []
                     for idx, child, fitness in zip(child_idxs, children, fitnesses):
                         if fitness >= root_fitnesses[idx]:
                             nodes.append((idx, child))
-
         if len(sequences) == 0:
             raise ValueError(
                 "No sequences generated. If `model_queries_per_round` is small, try "
                 "making `eval_batch_size` smaller"
             )
-
         # We propose the top `self.expmt_queries_per_round` new sequences we have generated
         new_seqs = np.array(list(sequences.keys()))
         preds = np.array(list(sequences.values()))
         sorted_order = np.argsort(preds)[: -self.expmt_queries_per_round-1 : -1]
-
         return measured_sequences, new_seqs[sorted_order], preds[sorted_order]
 
     def get_training_data(
         self,
         measured_sequences: pd.DataFrame,
     ) -> pd.DataFrame:
-        eval_size = min(len(measured_sequences), self.model_queries_per_round)
-        sorted_df = measured_sequences.sort_values(
-            by=["true_score"], ascending=False
-        ).reset_index(drop=True)
-        filtered_seqs = sorted_df.loc[:eval_size-1]
-        idxs = np.random.choice(eval_size, self.training_data_size, replace=False)
-        sampled_seqs = filtered_seqs.loc[idxs]
-        return sampled_seqs
+        return measured_sequences

@@ -1,9 +1,11 @@
 """Define a CNN Model."""
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
 from .torch_model import TorchModel
+from skorch.callbacks import EarlyStopping
 
 
 class CNN(TorchModel):
@@ -14,6 +16,7 @@ class CNN(TorchModel):
         hidden_size: int,
         kernel_size: int,
         name: str = None,
+        nogpu: bool = True,
         **new_fit_params,
     ):
         """Create the CNNModel."""
@@ -25,12 +28,19 @@ class CNN(TorchModel):
             kernel_size,
         )
         ### set fit parameters
+        device = torch.device(
+            'cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu'
+        )
         fit_params = {
-            "max_epochs": 20,
-            "batch_size": 256,
+            "max_epochs": 20, # default:20
+            "batch_size": 32, # default:32
             "lr": 1e-3,
             "criterion": nn.MSELoss,
             "optimizer": optim.Adam,
+            "warm_start": False,
+            "device": device,
+            "callbacks": [EarlyStopping().initialize()],
+            #"train_split": None, # default: 5-fold cv
         }
         fit_params.update(new_fit_params)
 
