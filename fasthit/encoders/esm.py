@@ -127,16 +127,18 @@ class ESM(fasthit.Encoder):
                     toks, repr_layers=[self._pretrained_model.num_layers], return_contacts=False
                 )
             embeddings = out["representations"][self._pretrained_model.num_layers]
-            if embeddings.ndim == 4:
+            embedding = embeddings.detach().cpu().numpy()
+            del toks, embeddings
+            torch.cuda.empty_cache()
+            ###
+            if embedding.ndim == 4:
                 # query_sequence at the last row of MSA
-                embeddings = embeddings[:, -1]
+                embedding = embedding[:, -1]
                 labels = labels[-1]
-            embedding = embeddings[:, self._target_protein_idxs].detach().cpu().numpy()
-            del embeddings
+            embedding = embedding[:, self._target_protein_idxs]
+            results.append(embedding)
             repr_dict = {labels[idx]: embedding[idx] for idx in range(embedding.shape[0])}
             self._embeddings.update(repr_dict)
-            results.append(embedding)
-            torch.cuda.empty_cache()
         return np.concatenate(results, axis=0)
     
     def _embed_msa(

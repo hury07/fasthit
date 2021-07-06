@@ -106,8 +106,10 @@ class ProtTrans(fasthit.Encoder):
         attention_mask = torch.tensor(ids['attention_mask']).to(self._device)
         with torch.no_grad():
             embeddings = self._pretrained_model(input_ids=input_ids, attention_mask=attention_mask)[0]
-        embeddings = embeddings[:, self._target_protein_idxs].cpu().numpy()
-        repr_dict = {labels[idx]: embeddings[idx] for idx in range(embeddings.shape[0])}
-        self._embeddings.update(repr_dict)
+        embedding = embeddings[:, self._target_protein_idxs].cpu().numpy()
+        del input_ids, attention_mask, embeddings
         torch.cuda.empty_cache()
-        return embeddings
+        ###
+        repr_dict = {labels[idx]: embedding[idx] for idx in range(embedding.shape[0])}
+        self._embeddings.update(repr_dict)
+        return embedding

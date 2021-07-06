@@ -103,8 +103,10 @@ class TAPE(fasthit.Encoder):
         )
         with torch.no_grad():
             embeddings, _ = self._pretraind_model(token_ids)
-        embeddings = embeddings[:, self._target_protein_idxs].detach().cpu().numpy()
-        repr_dict = {labels[idx]: embeddings[idx] for idx in range(embeddings.shape[0])}
-        self._embeddings.update(repr_dict)
+        embedding = embeddings[:, self._target_protein_idxs].detach().cpu().numpy()
+        del token_ids, embeddings
         torch.cuda.empty_cache()
-        return embeddings
+        ###
+        repr_dict = {labels[idx]: embedding[idx] for idx in range(embedding.shape[0])}
+        self._embeddings.update(repr_dict)
+        return embedding
