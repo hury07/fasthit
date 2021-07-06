@@ -131,11 +131,12 @@ class ESM(fasthit.Encoder):
                 # query_sequence at the last row of MSA
                 embeddings = embeddings[:, -1]
                 labels = labels[-1]
-            embeddings = embeddings[:, self._target_protein_idxs].detach().cpu().numpy()
-            repr_dict = {labels[idx]: embeddings[idx] for idx in range(embeddings.shape[0])}
+            embedding = embeddings[:, self._target_protein_idxs].detach().cpu().numpy()
+            del embeddings
+            repr_dict = {labels[idx]: embedding[idx] for idx in range(embedding.shape[0])}
             self._embeddings.update(repr_dict)
-            results.append(embeddings)
-        torch.cuda.empty_cache()
+            results.append(embedding)
+            torch.cuda.empty_cache()
         return np.concatenate(results, axis=0)
     
     def _embed_msa(

@@ -28,7 +28,6 @@ class Adalead(fasthit.Explorer):
         rounds: int,
         expmt_queries_per_round: int, # default: 384
         model_queries_per_round: int, # default: 400
-        training_data_size: int,
         starting_sequence: str,
         log_file: Optional[str] = None,
         alphabet: str = s_utils.AAS,
@@ -59,7 +58,6 @@ class Adalead(fasthit.Explorer):
             expmt_queries_per_round,
             model_queries_per_round,
             starting_sequence,
-            training_data_size,
             log_file,
         )
         self._alphabet = alphabet
@@ -110,7 +108,7 @@ class Adalead(fasthit.Explorer):
             measured_sequences["sequence"][top_inds].to_numpy(),
             self.expmt_queries_per_round,
         )
-        sequences = {}
+        sequences = {} # ordered in python>=3.7, and vice versa.
         previous_model_cost = self.model.cost
         while self.model.cost - previous_model_cost < self.model_queries_per_round:
             # generate recombinant mutants

@@ -22,7 +22,6 @@ class MLDE(fasthit.Explorer):
         rounds: int,
         expmt_queries_per_round: int,
         model_queries_per_round: int, #constrained_space_size
-        training_data_size: int,
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
@@ -37,7 +36,6 @@ class MLDE(fasthit.Explorer):
             expmt_queries_per_round,
             model_queries_per_round,
             starting_sequence,
-            training_data_size,
             log_file=log_file,
         )
 

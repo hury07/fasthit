@@ -147,6 +147,12 @@ def registry() -> Dict[str, Dict]:
         "KVGF",
         "MRGM",
     ]
+    with_imputed_max = [
+        "ANCA",
+        "FWCA",
+        "FWAA",
+        "FWLG",
+    ]
 
     problems = {
         "only_measured": {
@@ -162,6 +168,7 @@ def registry() -> Dict[str, Dict]:
                 "search_space": "V39,D40,G41,V54",
             },
             "starts": with_imputed,
+            #"starts": with_imputed_max,
         },
     }
 

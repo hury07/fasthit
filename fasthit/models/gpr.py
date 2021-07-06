@@ -1,12 +1,19 @@
-from typing import Sequence, Union
 from joblib import Parallel, delayed
 
-from math import ceil
+import math
 import numpy as np
-
 import torch
-import gpytorch
 from sklearn.gaussian_process import GaussianProcessRegressor
+import gpytorch
+from gpytorch.models import ExactGP
+from gpytorch.likelihoods import GaussianLikelihood
+from gpytorch.mlls import ExactMarginalLogLikelihood
+from gpytorch.means import ConstantMean
+from gpytorch.distributions import MultivariateNormal
+from gpytorch.kernels import Kernel, ScaleKernel, RBFKernel
+
+
+from typing import Sequence, Union
 
 import fasthit
 
@@ -14,28 +21,43 @@ import fasthit
 class GPRegressor(fasthit.Model):
     def __init__(
         self,
-        backend: str = 'sklearn',
+        backend: str = "sklearn",
         kernel: str = "RBF",
-        normalize_y: bool = True,
-        n_restarts: int = 0,
-        batch_size: int = 1000,
-        n_jobs: int = 1,
-        n_inducing: int = 1000,
+        **train_params
     ):
         name = f"GP_{backend}"
         super().__init__(name)
 
-        self._n_restarts = n_restarts
-        self._kernel = kernel
-        self._normalize_y = normalize_y
-        self._backend = backend
-        self._batch_size = batch_size
-        self._n_jobs = n_jobs
-        self._n_inducing = n_inducing
         self._uncertainties = np.inf
-        self._device = torch.device(
-            'cuda:0' if torch.cuda.is_available() else 'cpu'
-        )
+        self._backend = backend
+        self._kernel = kernel
+        if backend == "sklearn":
+            fit_params = {
+                "normalize_y": True,
+                "n_restarts": 0,
+                "batch_size": 1000,
+                "n_jobs": 1,
+            }
+            fit_params.update(train_params)
+            self._n_restarts = fit_params['n_restarts']
+            self._normalize_y = fit_params['normalize_y']
+            self._batch_size = fit_params['batch_size']
+            self._n_jobs = fit_params['n_jobs']
+        elif backend == "gpy":
+            fit_params = {
+                "n_inducing": 1000,
+            }
+            fit_params.update(train_params)
+            self._n_inducing = fit_params['n_inducing']
+        elif backend == "gpytorch":
+            fit_params = {
+                "training_iters": 100,
+            }
+            fit_params.update(train_params)
+            self._training_iters = fit_params['training_iters']
+            self._device = torch.device(
+                'cuda:0' if torch.cuda.is_available() else 'cpu'
+            )
 
     def train(
         self,
@@ -62,11 +84,14 @@ class GPRegressor(fasthit.Model):
             import GPy
             X = X[0]
             n_samples, n_features = X.shape
-            kernel = GPy.kern.RBF(
-                input_dim=n_features,
-                variance=1.0,
-                lengthscale=1.0
-            )
+            if self._kernel == "RBF":
+                kernel = GPy.kern.RBF(
+                    input_dim=n_features,
+                    variance=1.0,
+                    lengthscale=1.0
+                )
+            else:
+                pass
             self._model = GPy.models.SparseGPRegression(
                 X, y.reshape(-1, 1), kernel=kernel,
                 num_inducing=min(self._n_inducing, n_samples)
@@ -78,7 +103,7 @@ class GPRegressor(fasthit.Model):
             X = [torch.tensor(x, dtype=torch.float32, device=self._device) for x in X]
             y = torch.tensor(y, dtype=torch.float32, device=self._device)
             ###
-            self._likelihood = gpytorch.likelihoods.GaussianLikelihood().to(self._device)
+            self._likelihood = GaussianLikelihood().to(self._device)
             if self._kernel == "RBF":
                 self._model = GPyTorch_RBF(X, y, self._likelihood).to(self._device)
             elif self._kernel == "IOK":
@@ -89,17 +114,16 @@ class GPRegressor(fasthit.Model):
             # Use the Adam optimizer.
             optimizer = torch.optim.Adam(self._model.parameters(), lr=1.)
             # Loss for GPs is the marginal log likelihood.
-            mll = gpytorch.mlls.ExactMarginalLogLikelihood(self._likelihood, self._model)
+            mll = ExactMarginalLogLikelihood(self._likelihood, self._model)
             ###
-            training_iterations = 100 # default: 100
-            for i in range(training_iterations):
+            for i in range(self._training_iters):
                 optimizer.zero_grad()
                 output = self._model(*X)
                 loss = -mll(output, y)
                 loss.backward()
                 if verbose:
                     print('Iter {}/{} - Loss: {:.3f}'
-                           .format(i + 1, training_iterations, loss.item()))
+                           .format(i + 1, self._training_iters, loss.item()))
                 optimizer.step()
             torch.cuda.empty_cache()
 
@@ -115,7 +139,7 @@ class GPRegressor(fasthit.Model):
         ###
         if self._backend == 'sklearn':
             X = X[0]
-            n_batches = int(ceil(float(X.shape[0]) / self._batch_size))
+            n_batches = int(math.ceil(float(X.shape[0]) / self._batch_size))
             results = Parallel(n_jobs=self._n_jobs)(
                 delayed(parallel_predict)(
                     self._model,
@@ -220,43 +244,41 @@ class SparseGPRegressor(object):
 
 ####
 ####
-class GPyTorch_RBF(gpytorch.models.ExactGP):
+class GPyTorch_RBF(ExactGP):
     def __init__(self, input, target, likelihood):
         super(GPyTorch_RBF, self).__init__(input, target, likelihood)
-        self._mean_module = gpytorch.means.ConstantMean()
-        self._covar_module = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.RBFKernel()
-        )
+        self._mean_module = ConstantMean()
+        self._covar_module = ScaleKernel(RBFKernel())
 
     def forward(self, *input):
         mean_X = self._mean_module(input[0])
         covar_X = self._covar_module(input[0])
-        return gpytorch.distributions.MultivariateNormal(mean_X, covar_X)
+        return MultivariateNormal(mean_X, covar_X)
 
-class GPyTorch_IOK(gpytorch.models.ExactGP):
+class GPyTorch_IOK(ExactGP):
     def __init__(self, input, target, likelihood):
         super(GPyTorch_IOK, self).__init__(input, target, likelihood)
-        self._mean_module = gpytorch.means.ConstantMean()
-        self._kernel_in  = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-        self._kernel_out = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        self._mean_module = ConstantMean()
+        self._kernel_in  = ScaleKernel(RBFKernel())
+        self._kernel_out = ScaleKernel(RBFKernel())
 
     def forward(self, *input):
         mean_X = self._mean_module(input[0])
         covar_X = self._kernel_in(input[0]) + self._kernel_out(input[1])
-        return gpytorch.distributions.MultivariateNormal(mean_X, covar_X)
+        return MultivariateNormal(mean_X, covar_X)
 
-class GPyTorch_BLOSUM(gpytorch.models.ExactGP):
+class GPyTorch_BLOSUM(ExactGP):
     def __init__(self, input, target, likelihood):
         super(GPyTorch_BLOSUM, self).__init__(input, target, likelihood)
-        self._mean_module = gpytorch.means.ConstantMean()
-        self._kernel  = gpytorch.kernels.ScaleKernel(BLOSUMKernel())
+        self._mean_module = ConstantMean()
+        self._kernel  = ScaleKernel(BLOSUMKernel())
 
     def forward(self, *input):
         mean_X = self._mean_module(input[0])
         covar_X = self._kernel(input[0])
-        return gpytorch.distributions.MultivariateNormal(mean_X, covar_X)
+        return MultivariateNormal(mean_X, covar_X)
 
-class BLOSUMKernel(gpytorch.kernels.Kernel):
+class BLOSUMKernel(Kernel):
     def __init__(self):
         super().__init__()
         pass

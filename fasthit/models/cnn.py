@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from .torch_model import TorchModel
-from skorch.callbacks import EarlyStopping
 
 
 class CNN(TorchModel):
@@ -39,8 +38,8 @@ class CNN(TorchModel):
             "optimizer": optim.Adam,
             "warm_start": False,
             "device": device,
-            "callbacks": [EarlyStopping().initialize()],
-            #"train_split": None, # default: 5-fold cv
+            "callbacks": ["early_stop"],
+            "train_split": 5, # default: 5-fold cv
         }
         fit_params.update(new_fit_params)
 

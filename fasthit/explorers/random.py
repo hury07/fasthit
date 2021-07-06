@@ -26,7 +26,6 @@ class Random(fasthit.Explorer):
         rounds: int,
         expmt_queries_per_round: int,
         model_queries_per_round: int,
-        training_data_size: int,
         starting_sequence: str,
         log_file: Optional[str] = None,
         alphabet: str = s_utils.AAS,
@@ -55,7 +54,6 @@ class Random(fasthit.Explorer):
             expmt_queries_per_round,
             model_queries_per_round,
             starting_sequence,
-            training_data_size,
             log_file,
         )
         self._mu = mu
@@ -80,14 +78,15 @@ class Random(fasthit.Explorer):
             )
             if new_seq not in old_sequence_set:
                 new_seqs.add(new_seq)
-        new_seqs = np.array(list(new_seqs))
-        encodings = self.encoder.encode(new_seqs.tolist())
+        ###
+        new_seqs = sorted(new_seqs)
+        encodings = self.encoder.encode(new_seqs)
         preds = self.model.get_fitness(encodings)
         if self._elitist:
-            idxs = np.argsort(preds)[: -self.expmt_queries_per_round : -1]
+            idxs = np.argsort(preds)[: -self.expmt_queries_per_round-1 : -1]
         else:
             idxs = np.random.randint(0, len(new_seqs), size=self.expmt_queries_per_round)
-        return measured_sequences, new_seqs[idxs], preds[idxs]
+        return measured_sequences, np.array(new_seqs)[idxs], preds[idxs]
     """
     def get_training_data(
         self,

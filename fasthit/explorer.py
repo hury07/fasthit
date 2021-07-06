@@ -32,7 +32,6 @@ class Explorer(abc.ABC):
         expmt_queries_per_round: int,
         model_queries_per_round: int,
         starting_sequence: str,
-        training_data_size: Optional[int] = None,
         log_file: Optional[str] = None,
     ):
         """
@@ -53,13 +52,11 @@ class Explorer(abc.ABC):
             log_file: .csv filepath to write output.
 
         """
-        assert expmt_queries_per_round >= training_data_size
         assert expmt_queries_per_round <= model_queries_per_round
         ###
         self._name = name
         self._encoder = encoder
         self._model = model
-        self._training_data_size = training_data_size
 
         self._rounds = rounds
         self._expmt_queries_per_round = expmt_queries_per_round
@@ -220,7 +217,3 @@ class Explorer(abc.ABC):
     @property
     def model_queries_per_round(self):
         return self._model_queries_per_round
-    
-    @property
-    def training_data_size(self):
-        return self._training_data_size
