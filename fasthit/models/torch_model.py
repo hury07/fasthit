@@ -1,4 +1,3 @@
-"""Define the base PytorchModel class."""
 import numpy as np
 import torch.nn as nn
 from skorch import NeuralNet
@@ -34,22 +33,20 @@ class TorchModel(fasthit.Model):
         super().__init__(name)
         ###
         callbacks = []
-        for cb in fit_params["callbacks"]:
+        cbs = fit_params.pop("callbacks", [])
+        for cb in cbs:
             if cb == "early_stop":
                 callbacks.append(EarlyStopping().initialize())
             else:
                 pass
-        del fit_params["callbacks"]
         ###
-        self._train_split = fit_params["train_split"]
-        del fit_params["train_split"]
+        self._train_split = fit_params.pop("train_split", 0)
         if self._train_split == 0:
             train_split = None
             callbacks = []
         else:
             train_split = CVSplit(cv=self._train_split)
-        warm_start = fit_params["warm_start"] \
-            if "warm_start" in fit_params.keys() else False
+        warm_start = fit_params.pop("warm_start", False)
         ###
         self._model = NeuralNet(
             module=model,

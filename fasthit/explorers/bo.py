@@ -1,5 +1,5 @@
-"""BO explorer."""
 import numpy as np
+from scipy.stats import norm
 import pandas as pd
 
 from bisect import bisect_left
@@ -35,7 +35,7 @@ class BO_EVO(fasthit.Explorer):
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        proposal_func: str = "UCB",
+        proposal_func: str = "LCB",
         recomb_rate: float = 0.,
     ):
         """
@@ -67,12 +67,13 @@ class BO_EVO(fasthit.Explorer):
         self._seq_len = len(self.starting_sequence)
         proposal_funcs = {
             "UCB": self.UCB,
-            "Thompson": self.Thompson,
+            "LCB": self.LCB,
+            "TS": self.TS,
             "EI": self.EI,
+            "PI": self.PI,
             "Greedy": self.Greedy,
         }
         self._proposal_func = proposal_funcs[proposal_func]
-        self._discount = 0.1
 
     def _recombine_population(self, gen):
         np.random.shuffle(gen)
@@ -236,15 +237,28 @@ class BO_EVO(fasthit.Explorer):
         return sequences[index]
 
     def UCB(self, preds):
-        """Upper confidence bound."""
-        return preds + self._discount * self.model.uncertainties
+        kappa = 0.05
+        return preds + kappa * self.model.uncertainties
 
-    def Thompson(self, preds):
+    def LCB(self, preds):
+        kappa = 0.1
+        return preds - kappa * self.model.uncertainties
+
+    def TS(self, preds):
         return np.random.normal(preds, self.model.uncertainties)
 
     def EI(self, preds):
-        """Compute expected improvement."""
-        return np.array([max(pred - self._best_fitness, 0) for pred in preds])
+        eps = 0.1
+        improves = preds - self._best_fitness - eps
+        z = improves / self.model.uncertainties
+        return improves * norm.cdf(z) + self.model.uncertainties * norm.pdf(z)
+
+    def PI(self, preds):
+        eps = 0.1
+        return norm.cdf(
+            (preds - self._best_fitness - eps)
+            / self.model.uncertainties
+        )
 
     def Greedy(self, preds):
         return preds
@@ -270,7 +284,7 @@ class BO_ENU(fasthit.Explorer):
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        proposal_func: str = "UCB",
+        proposal_func: str = "LCB",
         eval_batch_size: int = 256,
     ):
         """Initialize the explorer."""
@@ -293,12 +307,13 @@ class BO_ENU(fasthit.Explorer):
         self._eval_batch_size = eval_batch_size
         proposal_funcs = {
             "UCB": self.UCB,
-            "Thompson": self.Thompson,
+            "LCB": self.LCB,
+            "TS": self.TS,
             "EI": self.EI,
+            "PI": self.PI,
             "Greedy": self.Greedy,
         }
         self._proposal_func = proposal_funcs[proposal_func]
-        self._discount = 0.1 # or 0.2
 
     def _pick_seqs(self):
         """Propose a batch of new sequences.
@@ -353,15 +368,28 @@ class BO_ENU(fasthit.Explorer):
         return measured_sequences
 
     def UCB(self, preds):
-        """Upper confidence bound."""
-        return preds + self._discount * self.model.uncertainties
+        kappa = 0.05
+        return preds + kappa * self.model.uncertainties
 
-    def Thompson(self, preds):
+    def LCB(self, preds):
+        kappa = 0.05
+        return preds - kappa * self.model.uncertainties
+
+    def TS(self, preds):
         return np.random.normal(preds, self.model.uncertainties)
 
     def EI(self, preds):
-        """Compute expected improvement."""
-        return np.array([max(pred - self._best_fitness, 0) for pred in preds])
+        eps = 0.1
+        improves = preds - self._best_fitness - eps
+        z = improves / self.model.uncertainties
+        return improves * norm.cdf(z) + self.model.uncertainties * norm.pdf(z)
+
+    def PI(self, preds):
+        eps = 0.2
+        return norm.cdf(
+            (preds - self._best_fitness - eps)
+            / self.model.uncertainties
+        )
 
     def Greedy(self, preds):
         return preds

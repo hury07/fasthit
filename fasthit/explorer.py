@@ -173,13 +173,13 @@ class Explorer(abc.ABC):
             self._model.train(encodings, labels)
 
             measured_data, seqs, preds = self.propose_sequences(measured_data, landscape)
-            true_score = landscape.get_fitness(seqs)
-
             if len(seqs) > self._expmt_queries_per_round:
                 warnings.warn(
                     "Must propose <= `self._expmt_queries_per_round` sequences per round"
                 )
-
+            ###
+            true_score = landscape.get_fitness(seqs)
+            ###
             measured_data = measured_data.append(
                 pd.DataFrame(
                     {

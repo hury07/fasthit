@@ -5,23 +5,18 @@ import numpy as np
 import torch
 from sklearn.gaussian_process import GaussianProcessRegressor
 import gpytorch
-from gpytorch.models import ExactGP
-from gpytorch.likelihoods import GaussianLikelihood
-from gpytorch.mlls import ExactMarginalLogLikelihood
-from gpytorch.means import ConstantMean
-from gpytorch.distributions import MultivariateNormal
-from gpytorch.kernels import Kernel, ScaleKernel, RBFKernel
-
-
+from gpytorch import (
+    models, likelihoods, mlls,
+    means, kernels, distributions
+)
 from typing import Sequence, Union
 
 import fasthit
 
-# TODO: use composite IO kernel instead
 class GPRegressor(fasthit.Model):
     def __init__(
         self,
-        backend: str = "sklearn",
+        backend: str = "gpytorch",
         kernel: str = "RBF",
         **train_params
     ):
@@ -103,9 +98,9 @@ class GPRegressor(fasthit.Model):
             X = [torch.tensor(x, dtype=torch.float32, device=self._device) for x in X]
             y = torch.tensor(y, dtype=torch.float32, device=self._device)
             ###
-            self._likelihood = GaussianLikelihood().to(self._device)
-            if self._kernel == "RBF":
-                self._model = GPyTorch_RBF(X, y, self._likelihood).to(self._device)
+            self._likelihood = likelihoods.GaussianLikelihood().to(self._device)
+            if self._kernel in ["RBF", "Matern"]:
+                self._model = GPyTorch_Model(X, y, self._likelihood, self._kernel).to(self._device)
             elif self._kernel == "IOK":
                 self._model = GPyTorch_IOK(X, y, self._likelihood).to(self._device)
             ###
@@ -114,7 +109,7 @@ class GPRegressor(fasthit.Model):
             # Use the Adam optimizer.
             optimizer = torch.optim.Adam(self._model.parameters(), lr=1.)
             # Loss for GPs is the marginal log likelihood.
-            mll = ExactMarginalLogLikelihood(self._likelihood, self._model)
+            mll = mlls.ExactMarginalLogLikelihood(self._likelihood, self._model)
             ###
             for i in range(self._training_iters):
                 optimizer.zero_grad()
@@ -149,10 +144,11 @@ class GPRegressor(fasthit.Model):
                 for batch_num in range(n_batches)
             )
             mean = np.concatenate([ result[0] for result in results ])
-            var = np.concatenate([ result[1] for result in results ])
+            std = np.concatenate([ result[1] for result in results ])
         elif self._backend == 'gpy':
             X = X[0]
             mean, var = self._model.predict(X, full_cov=False)
+            std = np.sqrt(var)
         elif self._backend == 'gpytorch':
             X = [torch.tensor(x, dtype=torch.float32, device=self._device) for x in X]
             # Set into eval mode.
@@ -163,9 +159,9 @@ class GPRegressor(fasthit.Model):
                  gpytorch.settings.max_root_decomposition_size(35):
                 preds = self._model(*X)
             mean = preds.mean.detach().cpu().numpy()
-            var = preds.variance.detach().cpu().numpy()
+            std = preds.stddev.detach().cpu().numpy()
             torch.cuda.empty_cache()
-        self._uncertainties = var.flatten()
+        self._uncertainties = std.flatten()
         return mean.flatten()
     
     @property
@@ -179,11 +175,11 @@ class GPRegressor(fasthit.Model):
 ####
 ####
 def parallel_predict(model, X, batch_num, n_batches, verbose):
-    mean, var = model.predict(X, return_std=True)
+    mean, std = model.predict(X, return_std=True)
     if verbose:
         print('Finished predicting batch number {}/{}'
                .format(batch_num + 1, n_batches))
-    return mean, var
+    return mean, std
 
 ####
 ####
@@ -244,41 +240,47 @@ class SparseGPRegressor(object):
 
 ####
 ####
-class GPyTorch_RBF(ExactGP):
-    def __init__(self, input, target, likelihood):
-        super(GPyTorch_RBF, self).__init__(input, target, likelihood)
-        self._mean_module = ConstantMean()
-        self._covar_module = ScaleKernel(RBFKernel())
+class GPyTorch_Model(models.ExactGP):
+    def __init__(self, input, target, likelihood, kernel):
+        super(GPyTorch_Model, self).__init__(input, target, likelihood)
+        self._mean_module = means.ConstantMean()
+        if kernel == "RBF":
+            self._covar_module = kernels.ScaleKernel(kernels.RBFKernel())
+        elif kernel == "Matern":
+            self._covar_module = kernels.ScaleKernel(kernels.MaternKernel()) # Matern52
+        else:
+            pass
 
     def forward(self, *input):
         mean_X = self._mean_module(input[0])
         covar_X = self._covar_module(input[0])
-        return MultivariateNormal(mean_X, covar_X)
+        return distributions.MultivariateNormal(mean_X, covar_X)
 
-class GPyTorch_IOK(ExactGP):
+
+class GPyTorch_IOK(models.ExactGP):
     def __init__(self, input, target, likelihood):
         super(GPyTorch_IOK, self).__init__(input, target, likelihood)
-        self._mean_module = ConstantMean()
-        self._kernel_in  = ScaleKernel(RBFKernel())
-        self._kernel_out = ScaleKernel(RBFKernel())
+        self._mean_module = means.ConstantMean()
+        self._kernel_in  = kernels.ScaleKernel(kernels.RBFKernel())
+        self._kernel_out = kernels.ScaleKernel(kernels.RBFKernel())
 
     def forward(self, *input):
         mean_X = self._mean_module(input[0])
         covar_X = self._kernel_in(input[0]) + self._kernel_out(input[1])
-        return MultivariateNormal(mean_X, covar_X)
+        return distributions.MultivariateNormal(mean_X, covar_X)
 
-class GPyTorch_BLOSUM(ExactGP):
+class GPyTorch_BLOSUM(models.ExactGP):
     def __init__(self, input, target, likelihood):
         super(GPyTorch_BLOSUM, self).__init__(input, target, likelihood)
-        self._mean_module = ConstantMean()
-        self._kernel  = ScaleKernel(BLOSUMKernel())
+        self._mean_module = means.ConstantMean()
+        self._kernel  = kernels.ScaleKernel(BLOSUMKernel())
 
     def forward(self, *input):
         mean_X = self._mean_module(input[0])
         covar_X = self._kernel(input[0])
-        return MultivariateNormal(mean_X, covar_X)
+        return distributions.MultivariateNormal(mean_X, covar_X)
 
-class BLOSUMKernel(Kernel):
+class BLOSUMKernel(kernels.Kernel):
     def __init__(self):
         super().__init__()
         pass

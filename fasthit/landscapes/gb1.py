@@ -1,9 +1,10 @@
 """Define GB1 landscape and problem registry."""
 import os
-from typing import Dict, Sequence
 
 import numpy as np
 import pandas as pd
+
+from typing import Dict, Sequence
 
 import fasthit
 

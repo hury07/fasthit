@@ -1,11 +1,9 @@
-###
 import os
-from typing import Sequence
-
 import math
 import numpy as np
 import pandas as pd
 import torch
+from typing import Sequence
 
 import fasthit
 
@@ -18,7 +16,6 @@ encodings = pd.DataFrame(
     }
 )
 encodings.set_index("encoder", inplace=True)
-
 
 class ESM(fasthit.Encoder):
     def __init__(
