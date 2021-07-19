@@ -37,7 +37,7 @@ def make_encoder(name, landscape, alphabet):
             name, alphabet,
             landscape.wt, landscape.combo_python_idxs,
         )
-    elif name in ["esm-1b", "esm-msa-1"]:
+    elif name in ["esm-1b", "esm-1v", "esm-msa-1", "esm-msa-1b"]:
         encoder = fasthit.encoders.ESM(
             name, alphabet,
             landscape.wt, landscape.combo_python_idxs,
@@ -73,7 +73,7 @@ def make_model(name, seq_length, n_features, **kwargs):
             ]
         )
     elif name == "gpr":
-        model = fasthit.models.GPRegressor(backend="gpytorch", kernel=kwargs["kernel"])
+        model = fasthit.models.GPRegressor(kernel=kwargs["kernel"])
     elif name == "rio":
         model = fasthit.models.RIO(
             fasthit.models.MLP(
@@ -166,21 +166,21 @@ def main():
         # "rosetta:3msi", "gb1:with_imputed"
         type_name, spec_name = landscape_name.split(":")
         problem, landscape, alphabet = make_landscape(type_name, spec_name)
-        for encoding in ["trrosetta"]:
+        for encoding in ["onehot"]:
             # "onehot",
             # "georgiev",
             # "transformer", "unirep", "trrosetta",
-            # "esm-1b", "esm-msa-1"
+            # "esm-1b", "esm-1v", "esm-msa-1", "esm-msa-1b"
             # "prot_bert_bfd", "prot_t5_xl_uniref50",
             encoder = make_encoder(encoding, landscape, alphabet)
             for explorer_name in ["bo_evo"]:
                 # "random", "adalead", "bo_evo", "bo_enu",
                 # "mlde"
                 for model_name in ["gpr"]:
-                # "linear", "randomforest"
-                # "mlp", "cnn",
-                # "gpr", "rio",
-                # "ensemble"
+                    # "linear", "randomforest"
+                    # "mlp", "cnn",
+                    # "gpr", "rio",
+                    # "ensemble"
                     for i, start_seq in enumerate(problem["starts"]):
                         np.random.seed(seed)
                         utils.set_torch_seed(seed)

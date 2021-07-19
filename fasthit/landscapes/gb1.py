@@ -29,23 +29,23 @@ class GB1(fasthit.Landscape):
 
     def __init__(self, data_used, search_space):
         """
-        Create a GB1 landscape from data .xlsx files.
+        Create a GB1 landscape from data .csv files.
         """
         super().__init__(name="GB1_combo")
 
         # Load GB1 measurements from file
-        measured_data = pd.read_excel(
+        measured_data = pd.read_csv(
             os.path.join(
                 os.path.dirname(__file__),
-                "data/gb1/elife-16965-supp1-v4.xlsx"
+                "data/gb1/elife-16965-supp1-v4.csv"
             )
         )
         measured_data = measured_data[["Variants", "Fitness"]]
         if data_used == "with_imputed":
-            imputed_data = pd.read_excel(
+            imputed_data = pd.read_csv(
                 os.path.join(
                     os.path.dirname(__file__),
-                    "data/gb1/elife-16965-supp2-v4.xlsx"
+                    "data/gb1/elife-16965-supp2-v4.csv"
                 )
             )
             imputed_data.columns = ["Variants", "Fitness"]

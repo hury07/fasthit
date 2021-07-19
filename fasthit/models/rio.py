@@ -12,11 +12,11 @@ class RIO(fasthit.Model):
         name: str = None,
     ):
         if name is None:
-            name = f"{mean_module.name}_GP_gpytorch"
+            name = f"{mean_module.name}_GPyTorch"
         super().__init__(name)
 
         self._mean_module = mean_module
-        self._uncertainty_module = GPRegressor(backend="gpytorch", kernel="IOK")
+        self._uncertainty_module = GPRegressor(kernel="IOK")
     
     def train(
         self,
