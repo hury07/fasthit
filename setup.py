@@ -35,9 +35,6 @@ setuptools.setup(
         "rna": [
             "viennarna==2.4.18"
         ],
-        "tape": [
-            "tape_proteins==0.4"
-        ],
         "esm": [
             "fair-esm==0.4.0",
             "hhsuite==3.3.0",
