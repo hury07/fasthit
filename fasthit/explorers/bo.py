@@ -11,7 +11,7 @@ from fasthit.utils import sequence_utils as s_utils
 
 class BO_EVO(fasthit.Explorer):
     """
-    Evolutionary Bayesian Optimization (Evo_BO) explorer.
+    Evolutionary Bayesian Optimization (BO_EVO) explorer.
 
     Algorithm works as follows:
         for N experiment rounds
@@ -62,7 +62,6 @@ class BO_EVO(fasthit.Explorer):
         self._alphabet = alphabet
         self._recomb_rate = recomb_rate
         self._best_fitness = 0.0
-        self._num_actions = 0
         self._state = s_utils.string_to_one_hot(starting_sequence, alphabet)
         self._seq_len = len(self.starting_sequence)
         proposal_funcs = {
@@ -97,7 +96,9 @@ class BO_EVO(fasthit.Explorer):
         return ret
 
     def sample_actions(self):
-        """Sample actions resulting in sequences to screen."""
+        """ Regularized evolution.
+            Sample n actions resulting in n sequences to screen.
+        """
         actions = set()
         pos_changes = []
         for pos in range(self._seq_len):
@@ -118,10 +119,11 @@ class BO_EVO(fasthit.Explorer):
         return list(actions)
 
     def pick_action(self):
-        """Pick action."""
-        ### select 1 from n candidates
+        """ Optimize acquisition function.
+            Select 1 candidate from n candidates
+        """
         state = self._state.copy()
-        actions = self.sample_actions()
+        actions = self.sample_actions() # Regularized evolution
         actions_to_screen = []
         states_to_screen = []
         for i in range(self.model_queries_per_round // self.expmt_queries_per_round):
@@ -133,7 +135,7 @@ class BO_EVO(fasthit.Explorer):
             states_to_screen.append(s_utils.one_hot_to_string(state_to_screen, self._alphabet))
         encodings = self.encoder.encode(states_to_screen)
         preds = self.model.get_fitness(encodings)
-        ###
+        ### Optimize acquisition function
         action_idx = np.argmax(self._proposal_func(preds)) ### greedy TODO: any improvement?
         uncertainty = self.model.uncertainties[action_idx]
         ###
@@ -141,7 +143,6 @@ class BO_EVO(fasthit.Explorer):
         new_state_string = states_to_screen[action_idx]
         self._state = s_utils.string_to_one_hot(new_state_string, self._alphabet)
         ###
-        self._num_actions += 1
         return uncertainty, new_state_string, preds[action_idx]
 
     def propose_sequences(
@@ -150,11 +151,11 @@ class BO_EVO(fasthit.Explorer):
         landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
-        if self._num_actions > 0:
-            # set state to best measured sequence from prior batch
-            last_round_num = measured_sequences["round"].max()
+        last_round = measured_sequences["round"].max()
+        if last_round > 0:
+            ### set state from previous batch by Thompson sampling
             last_batch = measured_sequences[
-                measured_sequences["round"] == last_round_num
+                measured_sequences["round"] == last_round
             ]
             _last_batch_seqs = last_batch["sequence"].tolist()
             _last_batch_true_scores = last_batch["true_score"].tolist()
@@ -179,14 +180,16 @@ class BO_EVO(fasthit.Explorer):
             measured_batch = sorted(measured_batch)
             sampled_seq = self.Thompson_sample(measured_batch)
             self._state = s_utils.string_to_one_hot(sampled_seq, self._alphabet)
-        # generate next batch by picking actions
+        ### generate next batch by picking actions
         initial_uncertainty = None
         samples = []
         preds = []
         prev_cost = self.model.cost
         all_measured_seqs = set(measured_sequences["sequence"].tolist())
         while self.model.cost - prev_cost < self.model_queries_per_round:
+            ### Optimize acquisition function
             uncertainty, new_state_string, pred = self.pick_action()
+            ###
             if new_state_string not in all_measured_seqs:
                 self._best_fitness = max(self._best_fitness, pred)
                 all_measured_seqs.add(new_state_string)
@@ -195,8 +198,8 @@ class BO_EVO(fasthit.Explorer):
             if initial_uncertainty is None:
                 initial_uncertainty = uncertainty
             if uncertainty > 2. * initial_uncertainty:
-                # reset sequence to starting sequence if we're in territory that's too
-                # uncharted
+                # reset sequence to starting sequence
+                # if we're in territory that's too uncharted
                 sampled_seq = self.Thompson_sample(measured_batch)
                 self._state = s_utils.string_to_one_hot(sampled_seq, self._alphabet)
                 initial_uncertainty = None

@@ -28,6 +28,24 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     python_requires=">=3.7",
     install_requires=requirments,
+    extras_require={
+        "rosetta": [
+            "pyrosetta"
+        ],
+        "rna": [
+            "viennarna==2.4.18"
+        ],
+        "tape": [
+            "tape_proteins==0.4"
+        ],
+        "esm": [
+            "fair-esm==0.4.0",
+            "hhsuite==3.3.0",
+        ],
+        "protTrans": [
+            "transformers==4.8.2"
+        ],
+    },
     include_package_data=True,
     package_data={
         "": [
@@ -37,7 +55,11 @@ setuptools.setup(
         ]
     },
     classifiers=[
+        "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "Topic :: Scientific/Engineering :: Synthetic Biology",
     ],
 )

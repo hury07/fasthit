@@ -1,6 +1,6 @@
 name: fast-hit
 channels:
-  - https://levinthal:paradox@conda.graylab.jhu.edu
+  #- https://levinthal:paradox@conda.graylab.jhu.edu
   - bioconda
   - gpytorch
   - pytorch
@@ -8,8 +8,8 @@ channels:
   - defaults
 dependencies:
   - tqdm=4.61.1
-  - viennarna=2.4.18
-  - pyrosetta-2021.27+release.7ce6488
+  #- viennarna=2.4.18
+  #- pyrosetta-2021.27+release.7ce6488
   - biopython=1.79
   - python=3.7.10
   - numpy=1.21.0
@@ -22,6 +22,6 @@ dependencies:
   - editdistance=0.5.3
   - seaborn=0.11.1
   - botorch=0.5.0
-  - transformers=4.8.2
-  - hhsuite=3.3.0
+  #- transformers=4.8.2
+  #- hhsuite=3.3.0
 prefix: /home/hury/miniconda3/envs/fast-hit

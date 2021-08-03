@@ -39,7 +39,15 @@ class TAPE(fasthit.Encoder):
         self._embeddings = {}
 
         self._device = torch.device('cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu')
-        import tape
+        try:
+            import tape
+        except ImportError as e:
+            raise ImportError(
+                "tape-proteins not installed. "
+                "Source code are available at "
+                "submodule ./fasthit/encoders/tape"
+            ) from e
+
         self._tokenizer = tape.TAPETokenizer(vocab='iupac')
         if self._encoding["model"] in ["bert-base"]:
             pretrained_model = tape.ProteinBertModel.from_pretrained(self._encoding["model"])

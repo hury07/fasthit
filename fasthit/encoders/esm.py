@@ -9,7 +9,10 @@ from argparse import Namespace
 import warnings
 import urllib
 from pathlib import Path
-import esm
+try:
+    import esm
+except ImportError:
+    pass
 ###
 
 import fasthit
@@ -45,6 +48,15 @@ class ESM(fasthit.Encoder):
         msa_batch_size:  int = 8,
         n_threads: int = 8,
     ):
+        try:
+            esm
+        except NameError as e:
+            raise ImportError(
+                "fair-esm not installed. "
+                "Source code are available at "
+                "https://github.com/facebookresearch/esm"
+            ) from e
+
         assert encoding in ["esm-1b", "esm-1v", "esm-msa-1", "esm-msa-1b"]
         name = f"ESM_{encoding}"
 
@@ -219,7 +231,7 @@ class ESM(fasthit.Encoder):
         return np.concatenate(results, axis=0)
 
 
-class Pretrained():
+class Pretrained(object):
     # Copyright (c) Facebook, Inc. and its affiliates.
     #
     # This source code is licensed under the MIT license found in the

@@ -6,7 +6,7 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 from sklearn import metrics
-from typing import Optional
+from typing import Optional, Tuple
 
 def cumulative_max_per_round(sequences):
     num_rounds = sequences["round"].max() + 1
@@ -115,4 +115,34 @@ def line_plot(
             path, fmt = save_name.split(".")
             plt.savefig(f"{path}_{name}.{fmt}")
         plt.show()
+
+def plot(
+    names_and_dirs: str,
+    save_name: Optional[str] = None,
+):
+    fig, ax = plt.subplots(dpi=300)
+    sns.set_style('whitegrid')
+    n_measurements_max = 0
+    for name, run_dir in names_and_dirs.items():
+        data = compute_scores(run_dir)
+        rounds = data["Round"].to_numpy()
+        n_measurements = data["Number of samples"].to_numpy()
+        cum_maxes = data["Cumulative maximum"].to_numpy()
+        max_round = rounds.max() + 1
+        n_measurements_max = max(n_measurements.max(), n_measurements_max)
+        n_repeat = (len(rounds) - 1) // max_round + 1
+        for i in range(n_repeat):
+            start = i*max_round
+            end = min(len(rounds), (i+1)*max_round)
+            round = rounds[start:end]
+            cum_max = cum_maxes[start:end]
+        ax.plot(round, cum_max, linewidth=1, label=name)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt.xlim(0, max_round - 1)
+    plt.ylim(0.0, 1.01)
+    plt.legend()
+    ###
+    if save_name is not None:
+        plt.savefig(save_name)
+    plt.show()
         
