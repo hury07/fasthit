@@ -16,11 +16,11 @@
     ```console
     pip install .
     ```
-4. You can also install in development mode.
+    Or install in development mode.
     ```console
     pip install -e .
     ```
-## Additional dependencies
+## Install additional dependencies (Optional)
 ### Landscapes
 1. ViennaRNA
     ```console
