@@ -7,26 +7,30 @@
     git clone https://github.com/hury07/fasthit.git
     cd fasthit
     ```
-2. Set conda environment configuration use `environment.yaml` file provided
+2. (Optional) Set conda environment use `environment.yaml` file provided
     ```console
     conda env create -f environment.yaml
     ```
-3. Install fasthit using `pip`.
+3. Install fast-hit using `pip`.
     ```console
     pip install .
     ```
-4. Get and install submodules if needed.
+4. You can also install in development mode.
+    ```console
+    pip install -e .
+    ```
+5. (Optional) Get and install submodules if needed.
     ```console
     cd fasthit/encoders/tape
     git submodule init
     git submodule update
     pip install .
     ```
-5. If you want to install extra dependencies, `cd` into repository.
+    Or install submodule in development mode
+    ```console
+    pip install -e .
+    ```
+5. (Optional) If you want to install extra dependencies, `cd` into repository.
     ```console
     pip install .[extras]
-    ```
-6. You can also install in development mode by
-    ```console
-    pip install -e .[extras]
     ```
