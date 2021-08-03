@@ -33,19 +33,19 @@ setuptools.setup(
             "pyrosetta"
         ],
         "rna": [
-            "viennarna==2.4.18"
+            "viennarna>=2.4.18"
         ],
         "esm": [
-            "fair-esm==0.4.0",
-            "hhsuite==3.3.0",
+            "fair-esm>=0.4.0",
+            "hhsuite>=3.3.0",
         ],
         "protTrans": [
-            "transformers==4.8.2"
+            "transformers>=4.8.2"
         ],
     },
     include_package_data=True,
     package_data={
-        "": [
+        "landscapes": [
             "landscapes/data/rosetta/*",
             "landscapes/data/tf_binding/*",
             "landscapes/data/gb1/*",
