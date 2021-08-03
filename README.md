@@ -30,7 +30,7 @@
     ```console
     pip install -e .
     ```
-5. (Optional) If you want to install extra dependencies, `cd` into repository.
+6. (Optional) If you want to install extra dependencies, `cd` into repository.
     ```console
     pip install .[extras]
     ```
