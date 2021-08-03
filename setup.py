@@ -1,5 +1,5 @@
 import os
-import setuptools
+from setuptools import setup, find_packages
 
 ### get dependence package list
 _filedir = os.path.dirname(os.path.abspath(__file__))
@@ -12,7 +12,7 @@ if os.path.isfile(requirementPath):
 with open("README.md") as f:
     long_description = f.read()
 
-setuptools.setup(
+setup(
     name="fast-hit",
     version="0.0.0",
     description=(
@@ -25,22 +25,15 @@ setuptools.setup(
     license="MIT",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     python_requires=">=3.7",
     install_requires=requirments,
     extras_require={
-        "rosetta": [
-            "pyrosetta"
-        ],
-        "rna": [
-            "viennarna>=2.4.18"
-        ],
         "esm": [
-            "fair-esm>=0.4.0",
-            "hhsuite>=3.3.0",
+            "fair-esm==0.4.0",
         ],
-        "protTrans": [
-            "transformers>=4.8.2"
+        "ProtTrans": [
+            "transformers==4.8.2"
         ],
     },
     include_package_data=True,

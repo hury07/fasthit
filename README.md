@@ -7,9 +7,10 @@
     git clone https://github.com/hury07/fasthit.git
     cd fasthit
     ```
-2. (Optional) Set conda environment use `environment.yaml` file provided
+2. (Recommend) Set conda environment use `environment.yaml` file provided
     ```console
     conda env create -f environment.yaml
+    conda activate fast-hit
     ```
 3. Install fast-hit using `pip`.
     ```console
@@ -19,7 +20,27 @@
     ```console
     pip install -e .
     ```
-5. (Optional) Get and install submodules if needed.
+## Additional dependencies
+### Landscapes
+1. ViennaRNA
+    ```console
+    conda install -c bioconda viennarna
+    ```
+2. PyRosetta
+    ```console
+    conda install -c https://levinthal:paradox@conda.graylab.jhu.edu pyrosetta
+    ```
+### Pretrained protein sequence encoders
+1. ESM
+    ```console
+    pip install .[esm]
+    conda install -c conda-forge -c bioconda hhsuite
+    ```
+2. ProtTrans
+    ```console
+    pip install .[ProtTrans]
+    ```
+3. TAPE
     ```console
     cd fasthit/encoders/tape
     git submodule init
@@ -29,8 +50,4 @@
     Or install submodule in development mode
     ```console
     pip install -e .
-    ```
-6. (Optional) If you want to install extra dependencies, `cd` into repository.
-    ```console
-    pip install .[extras]
     ```
