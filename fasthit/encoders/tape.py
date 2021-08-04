@@ -7,6 +7,8 @@ from typing import Sequence
 
 import fasthit
 
+_homedir = os.path.expanduser("~")
+
 encodings = pd.DataFrame(
     {
         "encoder": ["transformer", "unirep", "trrosetta"],
@@ -25,7 +27,7 @@ class TAPE(fasthit.Encoder):
         target_python_idxs: Sequence[int],
         batch_size: int = 256,
         nogpu: bool = False,
-        database: str = "/home/hury/databases/hhsuite/uniclust30/UniRef30_2020_06",
+        database: str = _homedir + "/databases/hhsuite/uniclust30/UniRef30_2020_06",
         msa_depth: int = 64,
         msa_batch_size:  int = 8,
         n_threads: int = 8,

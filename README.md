@@ -16,7 +16,7 @@
     ```console
     pip install .
     ```
-    Or install in development mode.
+    Or install in developer mode.
     ```console
     pip install -e .
     ```
@@ -36,6 +36,7 @@
     pip install .[esm]
     conda install -c conda-forge -c bioconda hhsuite
     ```
+    Extra hhsuite databases are required for MSA-Transformer
 2. ProtTrans
     ```console
     pip install .[ProtTrans]
@@ -47,7 +48,8 @@
     git submodule update
     pip install .
     ```
-    Or install submodule in development mode
+    Or install submodule in developer mode
     ```console
     pip install -e .
     ```
+    Extra hhsuite databases are required for Rosetta

@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pandas as pd
 import torch
-from typing import Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 ###
 from argparse import Namespace
 import warnings
@@ -17,7 +17,9 @@ except ImportError:
 
 import fasthit
 
-_filedir = os.path.dirname(os.path.abspath(__file__))
+_filedir = os.path.dirname(__file__)
+_homedir = os.path.expanduser("~")
+
 encodings = pd.DataFrame(
     {
         "encoder": [
@@ -42,8 +44,8 @@ class ESM(fasthit.Encoder):
         target_python_idxs: Sequence[int],
         batch_size: int = 256,
         nogpu: bool = False,
-        pretrained_model_dir: str = _filedir + "/../../pretrained_models/esm/",
-        database: str = "/home/hury/databases/hhsuite/uniclust30/UniRef30_2020_06",
+        pretrained_model_dir: Optional[str] = None,
+        database: Optional[str] = None,
         msa_depth: int = 64,
         msa_batch_size:  int = 8,
         n_threads: int = 8,
@@ -66,14 +68,20 @@ class ESM(fasthit.Encoder):
         self._embeddings = {}
         
         self._device = torch.device('cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu')
-        pretrained_model, esm_alphabet = Pretrained.load_model_and_alphabet(
-            pretrained_model_dir + self._encoding["model"]+".pt"
-        )
+        if pretrained_model_dir is None:
+            pretrained_model_dir = _filedir + "/../../pretrained_models/esm/"
+        pretrained_model_file = pretrained_model_dir + self._encoding["model"]+".pt"
+        if not os.path.isfile(pretrained_model_file):
+            pretrained_model_file = pretrained_model_dir + self._encoding["model"]
+        pretrained_model, esm_alphabet = Pretrained.load_model_and_alphabet(pretrained_model_file)
+        ###
         self._pretrained_model = pretrained_model.eval().to(self._device)
         self._batch_converter = esm_alphabet.get_batch_converter()
         self._target_protein_idxs = [idx + 1 for idx in target_python_idxs]
         ### For MSA-Transformer
         if self._encoding.name in ["esm-msa-1", "esm-msa-1b"]:
+            if database is None:
+                database = _homedir + "/databases/hhsuite/uniclust30/UniRef30_2020_06"
             self._database = database
             self._msa_depth = msa_depth
             self._msa_batch_size = msa_batch_size
