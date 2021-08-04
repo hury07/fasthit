@@ -72,7 +72,7 @@ class ESM(fasthit.Encoder):
             pretrained_model_dir = _filedir + "/../../pretrained_models/esm/"
         pretrained_model_file = pretrained_model_dir + self._encoding["model"]+".pt"
         if not os.path.isfile(pretrained_model_file):
-            pretrained_model_file = pretrained_model_dir + self._encoding["model"]
+            pretrained_model_file = self._encoding["model"]
         pretrained_model, esm_alphabet = Pretrained.load_model_and_alphabet(pretrained_model_file)
         ###
         self._pretrained_model = pretrained_model.eval().to(self._device)
