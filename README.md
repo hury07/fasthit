@@ -7,7 +7,7 @@
     git clone https://github.com/hury07/fasthit.git
     cd fasthit
     ```
-2. (Recommend) Set conda environment use `environment.yaml` file provided
+2. (Recommend) Set conda environment use `environment.yaml` file provided.
     ```console
     conda env create -f environment.yaml
     conda activate fast-hit
