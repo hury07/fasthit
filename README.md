@@ -1,6 +1,10 @@
 # fast-hit
 **F**ully-**A**utomated **S**equence design pla**T**form (**HI**gh-**T**hroughput)
 
+## Requirements
+- Python>=3.7
+- pytorch==1.8.0
+- gpytorch==1.4.2
 ## Installation
 1. Clone this repository and `cd` into it.
     ```console
