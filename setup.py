@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 ### get dependence package list
 _filedir = os.path.dirname(os.path.abspath(__file__))
-requirementPath = _filedir + '/requirements.txt'
+requirementPath = _filedir + "/requirements.txt"
 requirments = []
 if os.path.isfile(requirementPath):
     with open(requirementPath) as f:
@@ -33,8 +33,33 @@ setup(
             "fair-esm==0.4.0",
         ],
         "ProtTrans": [
-            "transformers==4.8.2"
+            "transformers==4.8.2",
         ],
+        "ding": [
+            "DI-engine==0.1.1",
+            "numpy>=1.10",
+            "requests>=2.25.1",
+            "six",
+            "gym>=0.15.3",  # pypy incompatible
+            "pyyaml",
+            "easydict==1.9",
+            "tensorboardX>=2.1,<=2.2",
+            "matplotlib",  # pypy incompatible
+            "yapf==0.29.0",
+            "responses~=0.12.1",
+            "flask~=1.1.2",
+            "lz4",
+            "cloudpickle",
+            "tabulate",
+            "sortedcontainers",
+            "click==7.1.2",
+            "URLObject~=2.4.3",
+            "urllib3>=1.26.5",
+            "readerwriterlock",
+            "namedlist",
+            "opencv-python",  # pypy incompatible
+            "enum_tools"
+        ]
     },
     include_package_data=True,
     package_data={
