@@ -34,7 +34,8 @@
     ```console
     conda install -c https://levinthal:paradox@conda.graylab.jhu.edu pyrosetta
     ```
-### Pretrained protein sequence encoders
+### Encoders
+#### Pretrained protein sequence encoders
 1. ESM
     ```console
     pip install fair-esm==0.4.0
@@ -51,10 +52,6 @@
     git submodule init
     git submodule update
     pip install .
-    ```
-    Or install submodule in developer mode
-    ```console
-    pip install -e .
     ```
     Extra hhsuite databases are required for Rosetta
 ### Explorers
