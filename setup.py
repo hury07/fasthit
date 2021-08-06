@@ -29,15 +29,6 @@ setup(
     python_requires=">=3.7",
     install_requires=requirments,
     extras_require={
-        "esm": [
-            "fair-esm==0.4.0",
-        ],
-        "ProtTrans": [
-            "transformers==4.8.2",
-        ],
-        "ding": [
-            "DI-engine==0.1.1",
-        ],
     },
     include_package_data=True,
     package_data={

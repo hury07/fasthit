@@ -37,13 +37,13 @@
 ### Pretrained protein sequence encoders
 1. ESM
     ```console
-    pip install .[esm]
+    pip install fair-esm==0.4.0
     conda install -c conda-forge -c bioconda hhsuite
     ```
     Extra hhsuite databases are required for MSA-Transformer
 2. ProtTrans
     ```console
-    pip install .[ProtTrans]
+    pip install transformers
     ```
 3. TAPE
     ```console
@@ -57,3 +57,8 @@
     pip install -e .
     ```
     Extra hhsuite databases are required for Rosetta
+### Explorers
+1. DI-engine (reinforcement learning engine)
+    ```console
+    pip install DI-engine==0.1.1
+    ```
