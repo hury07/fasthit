@@ -71,8 +71,7 @@ class Explorer(abc.ABC):
     @abc.abstractmethod
     def propose_sequences(
         self,
-        measured_sequences: pd.DataFrame,
-        landscape: Optional[fasthit.Landscape] = None,
+        measured_sequences: pd.DataFrame
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """
         Propose a list of sequences to be measured in the next round.
@@ -172,7 +171,7 @@ class Explorer(abc.ABC):
             labels = training_data["true_score"].to_numpy()
             self._model.train(encodings, labels)
 
-            measured_data, seqs, preds = self.propose_sequences(measured_data, landscape)
+            measured_data, seqs, preds = self.propose_sequences(measured_data)
             if len(seqs) > self._expmt_queries_per_round:
                 warnings.warn(
                     "Must propose <= `self._expmt_queries_per_round` sequences per round"

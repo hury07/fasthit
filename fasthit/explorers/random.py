@@ -62,8 +62,7 @@ class Random(fasthit.Explorer):
 
     def propose_sequences(
         self,
-        measured_sequences: pd.DataFrame,
-        landscape: Optional[fasthit.Landscape] = None,
+        measured_sequences: pd.DataFrame
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
         old_sequences = measured_sequences["sequence"]

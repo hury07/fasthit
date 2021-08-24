@@ -11,7 +11,7 @@
     git clone https://github.com/hury07/fasthit.git
     cd fasthit
     ```
-2. (Recommend) Set conda environment use `environment.yaml` file provided.
+2. (Recommend) Set conda environment use file `environment.yaml`.
     ```console
     conda env create -f environment.yaml
     conda activate fast-hit
@@ -24,7 +24,7 @@
     ```console
     pip install -e .
     ```
-## Install additional dependencies (Optional)
+## Install additional dependencies
 ### Landscapes
 1. ViennaRNA
     ```console
