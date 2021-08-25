@@ -19,7 +19,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 
-class Finetune(TorchModel):
+class FinetuneHalf(TorchModel):
     def __init__(
         self,
         pretrained_model_dir: str,
@@ -77,7 +77,7 @@ class Finetune(TorchModel):
         fit_params = {
             "lr": 1e-3,
             "max_epochs": 20,  # default: 20
-            "batch_size": 32,  # default: 64?
+            "batch_size": 128,  # default: 64?
             "train_split": 5,  # default: 5-fold cv
             "callbacks": ["early_stop"],
             "criterion": nn.MSELoss,
@@ -96,24 +96,35 @@ class Finetune(TorchModel):
         )
 
 
-class ConcatModel(nn.Module):
-    "Only concat several features"
+class MergeModel(nn.Module):
+    "Use MLP to merge several features"
 
     def __init__(
         self,
         pretrained_model_exprs: Sequence[int],
         target_protein_idxs: Sequence[int],
+        input_size: int,
+        hidden_size: int,
+        activiation_func: nn.Module = nn.ReLU(),
+        drop_prob: float = 0.,
     ):
         super().__init__()
         self.feature_num = len(pretrained_model_exprs)
         self.layer_index = pretrained_model_exprs
         self.target_protein_idxs = target_protein_idxs
 
+        self.layers = nn.ModuleList(
+            [nn.Linear(input_size, hidden_size) for _ in range(self.feature_num)])
+        self.activiation_func = activiation_func
+        self.dropout = nn.Dropout(drop_prob)
+        self.output = nn.LayerNorm(hidden_size, hidden_size)
+
     def forward(self, features: torch.Tensor):
         assert features.dim() == 4
-        # [batch_size, symbols, fetures, feature_index]
-        # (1, 58, 1280, 2)
-        x = features.transpose(1, 2)
+        feature_outputs = [self.dropout(self.activiation_func(
+            layer(features[self.layer_index[i]][:, self.target_protein_idxs, :, i]))) for i, layer in enumerate(self.layers)]
+        x = torch.stack(feature_outputs, dim=0).sum(dim=0)
+        x = self.output(x)
         return x
 
 
@@ -136,23 +147,22 @@ class FinetuneModel(nn.Module):
         self.target_protein_idxs = [idx + 1 for idx in target_protein_idxs]
         self.target_len = len(target_protein_idxs)
 
-        self.pretrained_model, self.esm_alphabet = pretrained.load_model_and_alphabet(
-            pretrained_model_dir + pretrained_model_name + ".pt"
+        self.feature_merge = MergeModel(
+            self.pretrained_model_exprs,
+            self.target_protein_idxs,
+            self.pretrained_model.args.embed_dim,
+            hidden_size_merge,
+            activiation_func,
+            drop_prob,
         )
-        self.pretrained_model.train()
-
         self.finetune_head = MLPModel(
-            1280 * self.target_len * len(self.pretrained_model_exprs),
+            hidden_size_merge * self.target_len,
             hidden_size,
             activiation_func,
             drop_prob,
         )
 
     def forward(self, x):
-        out = self.pretrained_model(
-                x, repr_layers=self.pretrained_model_exprs, return_contacts=False)
-        embeddings = out["representations"]
-        embeddings = torch.stack([v for _, v in embeddings.items()], dim=-1)
-        embeddings = embeddings[:, self.target_protein_idxs ,: ,  :]
-        x = self.finetune_head(embeddings)
+        x = self.feature_merge(x)
+        x = self.finetune_head(x)
         return x
