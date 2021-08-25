@@ -19,7 +19,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 
-class Finetune(TorchModel):
+class FinetuneCat(TorchModel):
     def __init__(
         self,
         pretrained_model_dir: str,
@@ -47,7 +47,7 @@ class Finetune(TorchModel):
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
         }
-        model = FinetuneModel(
+        model = FinetuneModelCat(
             pretrained_model_dir,
             pretrained_model_name,
             pretrained_model_exprs,
@@ -77,7 +77,7 @@ class Finetune(TorchModel):
         fit_params = {
             "lr": 1e-3,
             "max_epochs": 20,  # default: 20
-            "batch_size": 32,  # default: 64?
+            "batch_size": 128,  # default: 64?
             "train_split": 5,  # default: 5-fold cv
             "callbacks": ["early_stop"],
             "criterion": nn.MSELoss,
@@ -96,28 +96,7 @@ class Finetune(TorchModel):
         )
 
 
-class ConcatModel(nn.Module):
-    "Only concat several features"
-
-    def __init__(
-        self,
-        pretrained_model_exprs: Sequence[int],
-        target_protein_idxs: Sequence[int],
-    ):
-        super().__init__()
-        self.feature_num = len(pretrained_model_exprs)
-        self.layer_index = pretrained_model_exprs
-        self.target_protein_idxs = target_protein_idxs
-
-    def forward(self, features: torch.Tensor):
-        assert features.dim() == 4
-        # [batch_size, symbols, fetures, feature_index]
-        # (1, 58, 1280, 2)
-        x = features.transpose(1, 2)
-        return x
-
-
-class FinetuneModel(nn.Module):
+class FinetuneModelCat(nn.Module):
     """A Finetune model with several features."""
 
     def __init__(
@@ -136,11 +115,6 @@ class FinetuneModel(nn.Module):
         self.target_protein_idxs = [idx + 1 for idx in target_protein_idxs]
         self.target_len = len(target_protein_idxs)
 
-        self.pretrained_model, self.esm_alphabet = pretrained.load_model_and_alphabet(
-            pretrained_model_dir + pretrained_model_name + ".pt"
-        )
-        self.pretrained_model.train()
-
         self.finetune_head = MLPModel(
             1280 * self.target_len * len(self.pretrained_model_exprs),
             hidden_size,
@@ -149,10 +123,5 @@ class FinetuneModel(nn.Module):
         )
 
     def forward(self, x):
-        out = self.pretrained_model(
-                x, repr_layers=self.pretrained_model_exprs, return_contacts=False)
-        embeddings = out["representations"]
-        embeddings = torch.stack([v for _, v in embeddings.items()], dim=-1)
-        embeddings = embeddings[:, self.target_protein_idxs ,: ,  :]
-        x = self.finetune_head(embeddings)
+        x = self.finetune_head(x)
         return x

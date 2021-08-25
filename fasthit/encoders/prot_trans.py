@@ -1,14 +1,11 @@
-###
 import re
-from typing import Sequence
-
 import math
 import numpy as np
 import pandas as pd
 import torch
+from typing import Sequence
 
 import fasthit
-
 
 encodings = pd.DataFrame(
     {
@@ -17,7 +14,6 @@ encodings = pd.DataFrame(
     }
 )
 encodings.set_index("encoder", inplace=True)
-
 
 class ProtTrans(fasthit.Encoder):
     def __init__(
@@ -39,12 +35,26 @@ class ProtTrans(fasthit.Encoder):
 
         self._device = torch.device('cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu')
         if encoding in ["prot_bert_bfd"]:
-            from transformers import BertModel, BertTokenizer
+            try:
+                from transformers import BertModel, BertTokenizer
+            except ImportError as e:
+                raise ImportError(
+                    "transformers which contained ProtTrans not installed. "
+                    "Source code are available at "
+                    "https://github.com/huggingface/transformers"
+                ) from e
             self._tokenizer = BertTokenizer.from_pretrained(f"Rostlab/{encoding}", do_lower_case=False)
             self._pretrained_model = BertModel.from_pretrained(f"Rostlab/{encoding}")
             self._target_protein_idxs = [idx + 1 for idx in target_python_idxs]
         elif encoding in ["prot_t5_xl_uniref50"]:
-            from transformers import T5EncoderModel, T5Tokenizer
+            try:
+                from transformers import T5EncoderModel, T5Tokenizer
+            except ImportError as e:
+                raise ImportError(
+                    "transformers which contained ProtTrans not installed. "
+                    "Source code are available at "
+                    "https://github.com/huggingface/transformers"
+                ) from e
             self._tokenizer = T5Tokenizer.from_pretrained(f"Rostlab/{encoding}", do_lower_case=False)
             self._pretrained_model = T5EncoderModel.from_pretrained(f"Rostlab/{encoding}")
             self._target_protein_idxs = target_python_idxs

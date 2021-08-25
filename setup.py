@@ -1,5 +1,5 @@
 import os
-import setuptools
+from setuptools import setup, find_packages
 
 ### get dependence package list
 _filedir = os.path.dirname(os.path.abspath(__file__))
@@ -12,7 +12,7 @@ if os.path.isfile(requirementPath):
 with open("README.md") as f:
     long_description = f.read()
 
-setuptools.setup(
+setup(
     name="fast-hit",
     version="0.0.0",
     description=(
@@ -25,19 +25,31 @@ setuptools.setup(
     license="MIT",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     python_requires=">=3.7",
     install_requires=requirments,
+    extras_require={
+        "esm": [
+            "fair-esm==0.4.0",
+        ],
+        "ProtTrans": [
+            "transformers==4.8.2"
+        ],
+    },
     include_package_data=True,
     package_data={
-        "": [
+        "landscapes": [
             "landscapes/data/rosetta/*",
             "landscapes/data/tf_binding/*",
             "landscapes/data/gb1/*",
         ]
     },
     classifiers=[
+        "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "Topic :: Scientific/Engineering :: Synthetic Biology",
     ],
 )

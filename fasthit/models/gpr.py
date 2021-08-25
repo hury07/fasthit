@@ -81,7 +81,6 @@ class GPRegressor(fasthit.Model):
         X = [torch.tensor(x, dtype=torch.float32, device=self._device) for x in X]
         # Set into eval mode.
         self._model.eval()
-        #self._likelihood.eval()
         with torch.no_grad(), \
                 gpytorch.settings.fast_pred_var(), \
                 gpytorch.settings.max_root_decomposition_size(35):

@@ -143,10 +143,7 @@ class Adalead(fasthit.Explorer):
                         ):
                             child_idxs.append(idx)
                             children.append(child)
-                    # Stop the rollout once the child has worse predicted
-                    # fitness than the root of the rollout tree.
-                    # Otherwise, set node = child and add child to the list
-                    # of sequences to propose.
+                    ###
                     encodings = self.encoder.encode(children)
                     fitnesses = self.model.get_fitness(encodings)
                     sequences.update(zip(children, fitnesses))

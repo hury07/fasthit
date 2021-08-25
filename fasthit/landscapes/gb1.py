@@ -1,12 +1,12 @@
 """Define GB1 landscape and problem registry."""
 import os
-
 import numpy as np
 import pandas as pd
-
 from typing import Dict, Sequence
 
 import fasthit
+
+_filedir = os.path.dirname(__file__)
 
 class GB1(fasthit.Landscape):
     """
@@ -36,16 +36,14 @@ class GB1(fasthit.Landscape):
         # Load GB1 measurements from file
         measured_data = pd.read_csv(
             os.path.join(
-                os.path.dirname(__file__),
-                "data/gb1/elife-16965-supp1-v4.csv"
+                _filedir, "data/gb1/elife-16965-supp1-v4.csv"
             )
         )
         measured_data = measured_data[["Variants", "Fitness"]]
         if data_used == "with_imputed":
             imputed_data = pd.read_csv(
                 os.path.join(
-                    os.path.dirname(__file__),
-                    "data/gb1/elife-16965-supp2-v4.csv"
+                    _filedir, "data/gb1/elife-16965-supp2-v4.csv"
                 )
             )
             imputed_data.columns = ["Variants", "Fitness"]
