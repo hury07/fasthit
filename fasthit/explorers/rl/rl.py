@@ -18,6 +18,7 @@ from fasthit.utils import sequence_utils as s_utils
 from .ppo import PPOPolicy, PPOOffPolicy
 from .models.policy_models import VAC
 
+
 class RL(fasthit.Explorer):
     def __init__(
         self,
@@ -31,7 +32,7 @@ class RL(fasthit.Explorer):
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
     ):
-        name = f"RL-DyNAPPO"
+        name = f"RL-PPO"
 
         super().__init__(
             name,
@@ -57,7 +58,7 @@ class RL(fasthit.Explorer):
             starting_seq=self._starting_sequence,
             encoder=self.encoder,
             model=self.model,
-            max_num_steps=self.expmt_queries_per_round,
+            max_num_steps=self.model_queries_per_round,
         ))
 
         env_manager_cfg = deep_merge_dicts(BaseEnvManager.default_config(), env_cfg.manager)
@@ -107,13 +108,13 @@ class RL(fasthit.Explorer):
             self._replay_buffer.push(new_data, cur_collector_envstep=self._collector.envstep)
             sequences.update({
                 s_utils.one_hot_to_string(
-                    to_ndarray(new["next_obs"]["sequence"].cpu()),
+                    to_ndarray(new["obs"]["sequence"].cpu()),
                     self._alphabet
-                ) : new["next_obs"]["fitness"].item()
+                ) : new["obs"]["fitness"].item()
                 for new in new_data
             })
         
-        for i in range(self._cfg.policy.learn.update_per_collect):
+        for _ in range(self._cfg.policy.learn.update_per_collect):
             # Learner will train ``update_per_collect`` times in one iteration.
             train_data = self._replay_buffer.sample(
                 self._learner.policy.get_attribute('batch_size'), self._learner.train_iter
