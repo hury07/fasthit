@@ -5,14 +5,17 @@ import numpy as np
 import torch
 
 from ding.envs import BaseEnvManager
-from ding.utils import build_logger, EasyTimer, one_time_warning
-from ding.torch_utils import to_tensor, to_ndarray
 from ding.worker.collector.base_serial_collector import (
     ISerialCollector, CachePool, TrajBuffer, INF, to_tensor_transitions
 )
+from ding.utils import build_logger, EasyTimer, one_time_warning, SERIAL_COLLECTOR_REGISTRY
+from ding.torch_utils import to_tensor, to_ndarray
+
 from fasthit.utils import sequence_utils as s_utils
 
-class SampleCollector(ISerialCollector):
+
+@SERIAL_COLLECTOR_REGISTRY.register("my_serial_sample")
+class SerialSampleCollector(ISerialCollector):
     """
     Overview:
         Sample collector(n_sample), a sample is one training sample for updating model,
@@ -29,7 +32,7 @@ class SampleCollector(ISerialCollector):
     def __init__(
             self,
             cfg: EasyDict,
-            alphabet: str,
+            alphabet: str = s_utils.AAS,
             env: BaseEnvManager = None,
             policy: namedtuple = None,
             tb_logger: 'SummaryWriter' = None,  # noqa

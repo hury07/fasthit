@@ -1,21 +1,26 @@
 from typing import List, Dict, Any, Tuple, Union
 from collections import namedtuple
 import torch
-import copy
 import numpy as np
 from torch.distributions import Independent, Normal
 
-from ding.torch_utils import Adam, to_device
-from ding.rl_utils import ppo_data, ppo_error, ppo_policy_error, ppo_policy_data, get_gae_with_default_last_value, \
-    v_nstep_td_data, v_nstep_td_error, get_nstep_return_data, get_train_sample, gae, gae_data, ppo_error_continuous,\
-    get_gae
 from ding.model import model_wrap
-from ding.utils import POLICY_REGISTRY, split_data_generator, RunningMeanStd
-from ding.utils.data import default_collate, default_decollate
 from ding.policy import Policy
 from ding.policy.common_utils import default_preprocess_learn
+from ding.utils import POLICY_REGISTRY, split_data_generator, RunningMeanStd
+from ding.utils.data import default_collate, default_decollate
+from ding.torch_utils import Adam, to_device
+from ding.rl_utils import (
+    ppo_data, ppo_error,
+    ppo_policy_data, ppo_policy_error,
+    v_nstep_td_data, v_nstep_td_error,
+    gae_data, gae, ppo_error_continuous,
+    get_nstep_return_data, get_gae, get_train_sample,
+    get_gae_with_default_last_value,
+)
 
 
+@POLICY_REGISTRY.register("my_ppo_on_policy")
 class PPOPolicy(Policy):
     r"""
     Overview:
@@ -404,7 +409,7 @@ class PPOPolicy(Policy):
             variables += ['mu_mean', 'sigma_mean', 'sigma_grad', 'act']
         return variables
 
-
+@POLICY_REGISTRY.register("my_ppo_off_policy")
 class PPOOffPolicy(Policy):
     r"""
     Overview:

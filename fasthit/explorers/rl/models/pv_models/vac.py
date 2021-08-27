@@ -3,14 +3,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from ding.utils import SequenceType, squeeze, MODEL_REGISTRY
-from ding.model.common import ReparameterizationHead, RegressionHead, DiscreteHead, MultiHead, \
-    FCEncoder
+from ding.model.common import (
+    ReparameterizationHead, RegressionHead,
+    DiscreteHead, MultiHead, FCEncoder
+)
+from ding.utils import SequenceType, MODEL_REGISTRY
 
-#from ..encoders import FCEncoder
 
-
-#@MODEL_REGISTRY.register('vac')
+@MODEL_REGISTRY.register('my_vac')
 class VAC(nn.Module):
     r"""
     Overview:

@@ -1,15 +1,16 @@
 from typing import Optional
-from namedlist import NO_DEFAULT
-import numpy as np
 import editdistance as edd
+import numpy as np
+
 from ding.envs import BaseEnv, BaseEnvTimestep, BaseEnvInfo
 from ding.envs.common.env_element import EnvElementInfo
-from ding.utils import ENV_REGISTRY
 from ding.torch_utils import to_ndarray
+from ding.utils import ENV_REGISTRY
 
 from fasthit.utils import sequence_utils as s_utils
 
-@ENV_REGISTRY.register("mutative")
+
+@ENV_REGISTRY.register("my_mutative")
 class MutativeEnv(BaseEnv):
     def __init__(self, cfg: dict = {}) -> None:
         ###
@@ -36,10 +37,6 @@ class MutativeEnv(BaseEnv):
         self._num_step = 0
         self._max_num_steps = cfg.max_num_steps
 
-        #self._final_eval_reward = 0
-        #self._count = 0
-        ###
-
     def reset(self, starting_seq: Optional[str] = None):
         if starting_seq is not None:
             self._seq = starting_seq
@@ -53,7 +50,6 @@ class MutativeEnv(BaseEnv):
         }
         self._episode_seqs = set()
         self._num_steps = 0
-        self._final_eval_reward = 0
         return self._state
 
     def close(self) -> None:
@@ -67,21 +63,15 @@ class MutativeEnv(BaseEnv):
     def step(self, action: int) -> BaseEnvTimestep:
         info = {}
         ### Reach maximum env steps
-        #"""
         if self._num_steps >= self._max_num_steps:
-            #info['final_eval_reward'] = self._final_eval_reward
             return BaseEnvTimestep(self._state, to_ndarray([0.]), True, info)
-        #"""
         ###
         pos = action // len(self._alphabet)
         res = action % len(self._alphabet)
         self._num_steps += 1
         ### No-op
-        #"""
         if self._state["sequence"][pos, res] == 1:
-            #info['final_eval_reward'] = self._final_eval_reward
             return BaseEnvTimestep(self._state, to_ndarray([0.]), True, info)
-        #"""
         self._state["sequence"][pos] = 0
         self._state["sequence"][pos, res] = 1
         state_string = s_utils.one_hot_to_string(self._state["sequence"], self._alphabet)
@@ -93,24 +83,14 @@ class MutativeEnv(BaseEnv):
             state_string
         )
         ###
-        #"""
         if state_string in self._episode_seqs:
-            #self._final_eval_reward += -1
-            #info['final_eval_reward'] = self._final_eval_reward
             return BaseEnvTimestep(self._state, to_ndarray([-1.]), True, info)
-        #"""
         self._episode_seqs.add(state_string)
         ###
-        #"""
         if reward < self._previous_reward:
-            #self._final_eval_reward += reward
-            #info['final_eval_reward'] = self._final_eval_reward
             return BaseEnvTimestep(self._state, to_ndarray([reward]), True, info)
-        #"""
         self._previous_reward = reward
         ###
-        #self._final_eval_reward += reward
-        #info['final_eval_reward'] = self._final_eval_reward
         return BaseEnvTimestep(self._state, to_ndarray([reward]), False, info)
 
     def _sequence_density(self, seq):

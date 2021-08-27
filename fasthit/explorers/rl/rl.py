@@ -4,19 +4,18 @@ from functools import partial
 from easydict import EasyDict
 from typing import Optional, Tuple
 
-from ding.utils import ENV_REGISTRY
-from ding.envs.env_manager import BaseEnvManager
-from ding.worker.learner import BaseLearner
-from .collectors.collector import SampleCollector
-from ding.worker.replay_buffer import NaiveReplayBuffer
+from ding.config import compile_config
+from ding.envs.env.base_env import get_env_cls
+from ding.envs import create_env_manager
+from ding.worker.learner import create_learner
+from ding.worker.collector import create_serial_collector
+from ding.worker.replay_buffer import create_buffer
+from ding.policy import create_policy
+from ding.model import create_model
 from ding.torch_utils.data_helper import to_ndarray
-from ding.utils import deep_merge_dicts
 
 import fasthit
 from fasthit.utils import sequence_utils as s_utils
-
-from .ppo import PPOPolicy, PPOOffPolicy
-from .models.policy_models import VAC
 
 
 class RL(fasthit.Explorer):
@@ -32,8 +31,18 @@ class RL(fasthit.Explorer):
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
     ):
-        name = f"RL-PPO"
-
+        self._alphabet = alphabet
+        ###
+        cfg = EasyDict(cfg)
+        create_cfg = cfg.pop("create_cfg")
+        self._cfg = compile_config(
+            cfg,
+            seed=42,
+            auto=True,
+            create_cfg=create_cfg
+        )
+        ###
+        name = f"RL-{self._cfg.policy.type}"
         super().__init__(
             name,
             encoder,
@@ -44,15 +53,9 @@ class RL(fasthit.Explorer):
             starting_sequence,
             log_file,
         )
-        self._cfg = EasyDict(cfg)
-        self._alphabet = alphabet
-        self._seq_len = len(self.starting_sequence)
-        self._num_model_rounds = 1
-
-        from .envs import MutativeEnv
-        env_fn = ENV_REGISTRY.get("mutative")
-
+        ###
         env_cfg = self._cfg.env
+        env_fn = get_env_cls(env_cfg)
         env_cfg.update(dict(
             alphabet=self._alphabet,
             starting_seq=self._starting_sequence,
@@ -60,39 +63,42 @@ class RL(fasthit.Explorer):
             model=self.model,
             max_num_steps=self.model_queries_per_round,
         ))
-
-        env_manager_cfg = deep_merge_dicts(BaseEnvManager.default_config(), env_cfg.manager)
+        ###
         collector_env_num = env_cfg.collector_env_num
-        collector_env = BaseEnvManager(
+        env_manager_cfg = env_cfg.manager
+        collector_env = create_env_manager(
+            env_manager_cfg,
             [partial(
                 env_fn,
                 cfg=env_cfg,
             ) for _ in range(collector_env_num)],
-            env_manager_cfg
         )
-
-        policy_cls = PPOPolicy if self._cfg.policy.on_policy else PPOOffPolicy
-        policy_cfg = deep_merge_dicts(policy_cls.default_config(), self._cfg.policy)
-        model = VAC(**policy_cfg.model)
-        policy = policy_cls(policy_cfg, model=model)
-        
-        learner_cfg = deep_merge_dicts(BaseLearner.default_config(), policy_cfg.learn.learner)
-        self._learner = BaseLearner(
-            learner_cfg,
-            policy.learn_mode
+        ###
+        policy_cfg = self._cfg.policy
+        model = create_model(policy_cfg.model)
+        policy = create_policy(
+            policy_cfg,
+            model=model,
+            enable_field=['learn', 'collect'],
         )
-
-        collector_cfg = deep_merge_dicts(SampleCollector.default_config(), policy_cfg.collect.collector)
-        self._collector = SampleCollector(
-            collector_cfg,
-            self._alphabet,
+        ###
+        self._learner = create_learner(
+            policy_cfg.learn.learner,
+            policy=policy.learn_mode,
+            exp_name=self._cfg.exp_name,
+        )
+        ###
+        self._collector = create_serial_collector(
+            policy_cfg.collect.collector,
+            alphabet=self._alphabet,
             env=collector_env,
             policy=policy.collect_mode,
+            exp_name=self._cfg.exp_name,
         )
-
-        buffer_cfg = deep_merge_dicts(NaiveReplayBuffer.default_config(), policy_cfg.other.replay_buffer)
-        self._replay_buffer = NaiveReplayBuffer(
-            buffer_cfg,
+        ###
+        self._replay_buffer = create_buffer(
+            policy_cfg.other.replay_buffer,
+            exp_name=self._cfg.exp_name,
         )
 
     def propose_sequences(
@@ -104,7 +110,10 @@ class RL(fasthit.Explorer):
         while (
             self.model.cost - previous_model_cost < self.model_queries_per_round
         ):
-            new_data = self._collector.collect(train_iter=self._learner.train_iter)
+            new_data = self._collector.collect(
+                self._cfg.policy.collect.n_sample,
+                train_iter=self._learner.train_iter
+            )
             self._replay_buffer.push(new_data, cur_collector_envstep=self._collector.envstep)
             sequences.update({
                 s_utils.one_hot_to_string(
@@ -113,9 +122,8 @@ class RL(fasthit.Explorer):
                 ) : new["obs"]["fitness"].item()
                 for new in new_data
             })
-        
+        ###
         for _ in range(self._cfg.policy.learn.update_per_collect):
-            # Learner will train ``update_per_collect`` times in one iteration.
             train_data = self._replay_buffer.sample(
                 self._learner.policy.get_attribute('batch_size'), self._learner.train_iter
             )
