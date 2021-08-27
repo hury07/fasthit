@@ -44,8 +44,8 @@ cfg = dict(
                 ),
             ),
             multi_gpu=False,
-            update_per_collect=6,
-            batch_size=20,
+            update_per_collect=10,
+            batch_size=64,
             learning_rate=0.001,
             value_weight=0.5,
             entropy_weight=0.01,
@@ -63,7 +63,7 @@ cfg = dict(
             unroll_len=1,
             discount_factor=0.99,
             gae_lambda=0.95,
-            n_sample=96,
+            n_sample=384,
         ),
         other=dict(
             replay_buffer=dict(
@@ -98,11 +98,11 @@ cfg = dict(
         ),
         continuous=False,
         cuda=False,
-        on_policy=True,
+        on_policy=False,
         priority=False,
         priority_IS_weight=False,
         recompute_adv=True,
-        nstep_return=True,
+        nstep_return=False,
         nstep=3,
     ),
 )
@@ -269,7 +269,7 @@ def main():
     seed = 42
     rounds = 10
     expmt_queries_per_round = 384
-    model_queries_per_round = 3072
+    model_queries_per_round = 3200
     ###
     for landscape_name in ["gb1:with_imputed"]:
         # "rna:L14_RNA1", "rna:L50_RNA1", "rna:L100_RNA1", "rna:C20_L100_RNA1+2",
@@ -307,7 +307,7 @@ def main():
                         log_file = (
                             f"runs_{type_name}/{spec_name}/"
                             + f"{explorer_name}/{encoding}/{model_name}/"
-                            + f"expl_ppo_on"
+                            + f"expl_ppo_off_s"
                             + f"/run{i}.csv"
                         )
                         ###
