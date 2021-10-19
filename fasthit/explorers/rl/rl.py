@@ -10,6 +10,7 @@ from ding.envs import create_env_manager
 from ding.worker.learner import create_learner
 from ding.worker.collector import create_serial_collector
 from ding.worker.replay_buffer import create_buffer
+from ding.worker.coordinator import BaseSerialCommander
 from ding.policy import create_policy
 from ding.model import create_model
 from ding.torch_utils.data_helper import to_ndarray
@@ -35,6 +36,7 @@ class RL(fasthit.Explorer):
         ###
         cfg = EasyDict(cfg)
         create_cfg = cfg.pop("create_cfg")
+        create_cfg.policy.type = create_cfg.policy.type + '_command'
         self._cfg = compile_config(
             cfg,
             seed=42,
@@ -79,7 +81,7 @@ class RL(fasthit.Explorer):
         policy = create_policy(
             policy_cfg,
             model=model,
-            enable_field=['learn', 'collect'],
+            enable_field=["learn", "collect", "command"],
         )
         ###
         self._learner = create_learner(
@@ -101,6 +103,16 @@ class RL(fasthit.Explorer):
             exp_name=self._cfg.exp_name,
         )
 
+        self._commander = BaseSerialCommander(
+            policy_cfg.other.commander,
+            self._learner,
+            self._collector,
+            None,
+            self._replay_buffer,
+            policy=policy.command_mode,
+        )
+
+
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame
@@ -110,9 +122,11 @@ class RL(fasthit.Explorer):
         while (
             self.model.cost - previous_model_cost < self.model_queries_per_round
         ):
+            collect_kwargs = self._commander.step()
             new_data = self._collector.collect(
                 self._cfg.policy.collect.n_sample,
-                train_iter=self._learner.train_iter
+                train_iter=self._learner.train_iter,
+                policy_kwargs=collect_kwargs
             )
             self._replay_buffer.push(new_data, cur_collector_envstep=self._collector.envstep)
             sequences.update({
