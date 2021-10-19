@@ -123,6 +123,7 @@ class Explorer(abc.ABC):
     def run(
         self,
         landscape: fasthit.Landscape,
+        init_seqs_file: str = None,
         verbose: bool = True,
     ) -> Tuple[pd.DataFrame, Dict]:
         """
@@ -148,14 +149,21 @@ class Explorer(abc.ABC):
         }
 
         # Initial sequences and their scores
+        if init_seqs_file is None:
+            init_seqs = [self._starting_sequence]
+        else:
+            assert init_seqs_file.endswith(".csv")
+            data = pd.read_csv(init_seqs_file)
+            init_seqs = data["Variants"].to_numpy()
+
         measured_data = pd.DataFrame(
             {
-                "sequence": self._starting_sequence,
+                "sequence": init_seqs,
                 "model_score": np.nan,
-                "true_score": landscape.get_fitness([self._starting_sequence]),
+                "true_score": landscape.get_fitness(init_seqs),
                 "round": 0,
                 "model_cost": self._model.cost,
-                "measurement_cost": 1,
+                "measurement_cost": len(init_seqs),
             }
         )
         training_data = measured_data
@@ -196,64 +204,6 @@ class Explorer(abc.ABC):
             training_data = self.get_training_data(measured_data)
 
         return measured_data, metadata
-    
-    """
-    def run_restart(
-        self,
-        landscape: fasthit.Landscape,
-        round: int,
-        verbose: bool = True,
-    ) -> Tuple[pd.DataFrame, Dict]:
-        ###
-        self._model.cost = 0
-        # Metadata about run that will be used for logging purposes
-        metadata = {
-            "run_id": datetime.now().strftime("%H:%M:%S-%m/%d/%Y"),
-            "exp_name": self._name,
-            "encoder_name": self._encoder.name,
-            "model_name": self._model.name,
-            "landscape_name": landscape.name,
-            "rounds": self._rounds,
-            "expmt_queries_per_round": self._expmt_queries_per_round,
-            "model_queries_per_round": self._model_queries_per_round,
-        }
-
-        # read measured_data
-        measured_data = pd.read_csv(self._log_file, header=1)
-        pre_round = measured_data["round"].max()
-        assert round == pre_round + 1
-
-        training_data = self.get_training_data(measured_data)
-        self._log(measured_data, metadata, pre_round, verbose, time.time())
-
-        round_start_time = time.time()
-
-        encodings = self._encoder.encode(training_data["sequence"].to_list())
-        labels = training_data["true_score"].to_numpy()
-        self._model.train(encodings, labels)
-
-        measured_data, seqs, preds = self.propose_sequences(measured_data, landscape)
-        if len(seqs) > self._expmt_queries_per_round:
-            warnings.warn(
-                "Must propose <= `self._expmt_queries_per_round` sequences per round"
-            )
-        ###
-        true_score = landscape.get_fitness(seqs)
-        ###
-        measured_data = measured_data.append(
-            pd.DataFrame(
-                {
-                    "sequence": seqs,
-                    "model_score": preds,
-                    "true_score": true_score,
-                    "round": round,
-                    "model_cost": self._model.cost,
-                    "measurement_cost": len(measured_data) + len(seqs),
-                }
-            )
-        )
-        self._log(measured_data, metadata, round, verbose, round_start_time)
-    """
 
     @property
     def encoder(self):

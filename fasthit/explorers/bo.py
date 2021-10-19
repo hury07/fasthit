@@ -151,34 +151,35 @@ class BO_EVO(fasthit.Explorer):
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
         last_round = measured_sequences["round"].max()
-        if last_round > 0:
-            ### set state from previous batch by Thompson sampling
-            last_batch = measured_sequences[
-                measured_sequences["round"] == last_round
-            ]
-            _last_batch_seqs = last_batch["sequence"].tolist()
-            _last_batch_true_scores = last_batch["true_score"].tolist()
-            last_batch_seqs = _last_batch_seqs
-            if self._recomb_rate > 0 and len(last_batch) > 1:
-                last_batch_seqs = self._recombine_population(last_batch_seqs)
-            measured_batch = []
-            _new_seqs = []
-            for seq in last_batch_seqs:
-                if seq in _last_batch_seqs:
-                    measured_batch.append(
-                        (_last_batch_true_scores[_last_batch_seqs.index(seq)], seq)
-                    )
-                else:
-                    _new_seqs.append(seq)
-            if len(_new_seqs) > 0:
-                encodings = self.encoder.encode(_new_seqs)
-                fitnesses = self.model.get_fitness(encodings)
-                measured_batch.extend(
-                    [(fitnesses[i], _new_seqs[i]) for i in range(fitnesses.shape[0])]
+        #if last_round > 0:
+        ### set state from previous batch by Thompson sampling
+        last_batch = measured_sequences[
+            measured_sequences["round"] == last_round
+        ]
+        _last_batch_seqs = last_batch["sequence"].tolist()
+        _last_batch_true_scores = last_batch["true_score"].tolist()
+        last_batch_seqs = _last_batch_seqs
+        if self._recomb_rate > 0 and len(last_batch) > 1:
+            last_batch_seqs = self._recombine_population(last_batch_seqs)
+        measured_batch = []
+        _new_seqs = []
+        for seq in last_batch_seqs:
+            if seq in _last_batch_seqs:
+                measured_batch.append(
+                    (_last_batch_true_scores[_last_batch_seqs.index(seq)], seq)
                 )
-            measured_batch = sorted(measured_batch)
-            sampled_seq = self.Thompson_sample(measured_batch)
-            self._state = s_utils.string_to_one_hot(sampled_seq, self._alphabet)
+            else:
+                _new_seqs.append(seq)
+        if len(_new_seqs) > 0:
+            encodings = self.encoder.encode(_new_seqs)
+            fitnesses = self.model.get_fitness(encodings)
+            measured_batch.extend(
+                [(fitnesses[i], _new_seqs[i]) for i in range(fitnesses.shape[0])]
+            )
+        measured_batch = sorted(measured_batch)
+        sampled_seq = self.Thompson_sample(measured_batch)
+        self._state = s_utils.string_to_one_hot(sampled_seq, self._alphabet)
+        
         ### generate next batch by picking actions
         initial_uncertainty = None
         samples = []
