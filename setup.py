@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 ### get dependence package list
 _filedir = os.path.dirname(os.path.abspath(__file__))
-requirementPath = _filedir + '/requirements.txt'
+requirementPath = _filedir + "/requirements.txt"
 requirments = []
 if os.path.isfile(requirementPath):
     with open(requirementPath) as f:
@@ -29,12 +29,10 @@ setup(
     python_requires=">=3.7",
     install_requires=requirments,
     extras_require={
-        "esm": [
-            "fair-esm==0.4.0",
-        ],
-        "ProtTrans": [
-            "transformers==4.8.2"
-        ],
+        "fast": [
+            "numba",
+            "memcache",
+        ]
     },
     include_package_data=True,
     package_data={
