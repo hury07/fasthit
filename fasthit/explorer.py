@@ -175,9 +175,9 @@ class Explorer(abc.ABC):
         for r in range_iterator(1, self._rounds + 1):
             round_start_time = time.time()
 
-            encodings = self._encoder.encode(training_data["sequence"].to_list())
+            encodings = self.encoder.encode(training_data["sequence"].to_list())
             labels = training_data["true_score"].to_numpy()
-            self._model.train(encodings, labels)
+            self.model.train(encodings, labels)
 
             measured_data, seqs, preds = self.propose_sequences(measured_data)
             if len(seqs) > self._expmt_queries_per_round:
