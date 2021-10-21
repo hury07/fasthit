@@ -61,7 +61,7 @@ class BO_EVO(fasthit.Explorer):
         )
         self._alphabet = alphabet
         self._recomb_rate = recomb_rate
-        self._best_fitness = 0.0
+        self._best_fitness = -np.inf
         self._state = s_utils.string_to_one_hot(starting_sequence, alphabet)
         self._seq_len = len(self.starting_sequence)
         proposal_funcs = {
