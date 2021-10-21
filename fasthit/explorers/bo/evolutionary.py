@@ -35,18 +35,18 @@ class BO_EVO(fasthit.Explorer):
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        proposal_func: str = "LCB",
+        util_func: str = "LCB",
         recomb_rate: float = 0.,
     ):
         """
         Args:
-            proposal_func (equal to EI or UCB): The improvement proposal_function used in BO,
+            util_func (equal to EI or UCB): The improvement util_function used in BO,
                 default UCB.
             recomb_rate: The recombination rate on the previous batch before
                 BO proposes samples, default 0.
 
         """
-        name = f"BO_EVO_proposal-function={proposal_func}"
+        name = f"BO_EVO_proposal-function={util_func}"
         assert hasattr(model, "uncertainties")
 
         super().__init__(
@@ -64,7 +64,7 @@ class BO_EVO(fasthit.Explorer):
         self._best_fitness = -np.inf
         self._state = s_utils.string_to_one_hot(starting_sequence, alphabet)
         self._seq_len = len(self.starting_sequence)
-        proposal_funcs = {
+        util_funcs = {
             "UCB": self.UCB,
             "LCB": self.LCB,
             "TS": self.TS,
@@ -72,7 +72,7 @@ class BO_EVO(fasthit.Explorer):
             "PI": self.PI,
             "Greedy": self.Greedy,
         }
-        self._proposal_func = proposal_funcs[proposal_func]
+        self._util_func = util_funcs[util_func]
 
     def _recombine_population(self, gen):
         np.random.shuffle(gen)
@@ -119,7 +119,7 @@ class BO_EVO(fasthit.Explorer):
         return list(actions)
 
     def pick_action(self):
-        """ Optimize acquisition function.
+        """ Optimize utility function.
             Select 1 candidate from n candidates
         """
         state = self._state.copy()
@@ -135,8 +135,8 @@ class BO_EVO(fasthit.Explorer):
             states_to_screen.append(s_utils.one_hot_to_string(state_to_screen, self._alphabet))
         encodings = self.encoder.encode(states_to_screen)
         preds = self.model.get_fitness(encodings)
-        ### Optimize acquisition function
-        action_idx = np.argmax(self._proposal_func(preds)) ### greedy TODO: any improvement?
+        ### Optimize utility function
+        action_idx = np.argmax(self._util_func(preds)) ### greedy TODO: any improvement?
         uncertainty = self.model.uncertainties[action_idx]
         ###
         action = actions_to_screen[action_idx]
@@ -187,7 +187,7 @@ class BO_EVO(fasthit.Explorer):
         prev_cost = self.model.cost
         all_measured_seqs = set(measured_sequences["sequence"].tolist())
         while self.model.cost - prev_cost < self.model_queries_per_round:
-            ### Optimize acquisition function
+            ### Optimize utility function
             uncertainty, new_state_string, pred = self.pick_action()
             ###
             if new_state_string not in all_measured_seqs:

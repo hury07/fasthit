@@ -28,11 +28,11 @@ class BO_ENU(fasthit.Explorer):
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        proposal_func: str = "LCB",
+        util_func: str = "LCB",
         eval_batch_size: int = 256,
     ):
         """Initialize the explorer."""
-        name = f"BO_ENU_Explorer-proposal_function={proposal_func}"
+        name = f"BO_ENU_Explorer-util_function={util_func}"
         assert hasattr(model, "uncertainties")
         ###
         super().__init__(
@@ -49,7 +49,7 @@ class BO_ENU(fasthit.Explorer):
         self._best_fitness = 0.
         self._seq_len = len(starting_sequence)
         self._eval_batch_size = eval_batch_size
-        proposal_funcs = {
+        util_funcs = {
             "UCB": self.UCB,
             "LCB": self.LCB,
             "TS": self.TS,
@@ -57,7 +57,7 @@ class BO_ENU(fasthit.Explorer):
             "PI": self.PI,
             "Greedy": self.Greedy,
         }
-        self._proposal_func = proposal_funcs[proposal_func]
+        self._util_func = util_funcs[util_func]
 
     def _pick_seqs(self):
         """Propose a batch of new sequences.
@@ -70,9 +70,9 @@ class BO_ENU(fasthit.Explorer):
                 if len(new_seqs) >= self._eval_batch_size:
                     encodings = self.encoder.encode(new_seqs)
                     fitness = self.model.get_fitness(encodings)
-                    acquisition = self._proposal_func(fitness)
+                    utility = self._util_func(fitness)
                     maxima.extend(
-                        [acquisition[i], fitness[i], new_seqs[i]]
+                        [utility[i], fitness[i], new_seqs[i]]
                         for i in range(len(new_seqs))
                     )
                     new_seqs = []

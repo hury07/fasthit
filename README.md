@@ -1,6 +1,7 @@
 # fast-hit
 **F**ully-**A**utomated **S**equence design pla**T**form (**HI**gh-**T**hroughput)
-
+## Examples
+Demos. are given in folder `examples`.
 ## Requirements
 - Python>=3.7
 - pytorch==1.8.0

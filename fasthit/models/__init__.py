@@ -8,6 +8,7 @@ from .sklearn_models import (
 from .torch_model import TorchModel
 from .mlp import MLP
 from .cnn import CNN
+from .finetune_model import Finetune
 ### uncertainty models
 from .ensemble import Ensemble
 from .gpr import GPRegressor
