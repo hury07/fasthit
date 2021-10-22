@@ -69,7 +69,7 @@ class ESM(fasthit.Encoder):
         
         self._device = torch.device('cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu')
         if pretrained_model_dir is None:
-            pretrained_model_dir = _filedir + "/../../pretrained_models/esm/"
+            pretrained_model_dir = _homedir + "/databases/pretrained_models/esm/"
         pretrained_model_file = pretrained_model_dir + self._encoding["model"]+".pt"
         if not os.path.isfile(pretrained_model_file):
             pretrained_model_file = self._encoding["model"]

@@ -47,7 +47,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "Topic :: Scientific/Engineering :: Bioinformatics",
         "Topic :: Scientific/Engineering :: Synthetic Biology",
     ],
 )

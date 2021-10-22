@@ -46,7 +46,7 @@ class BO_ENU(fasthit.Explorer):
             log_file,
         )
         self._alphabet = alphabet
-        self._best_fitness = 0.
+        self._best_fitness = -np.inf
         self._seq_len = len(starting_sequence)
         self._eval_batch_size = eval_batch_size
         util_funcs = {

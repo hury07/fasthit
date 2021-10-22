@@ -47,6 +47,7 @@ def make_encoder(name, landscape, alphabet):
         encoder = fasthit.encoders.ESM(
             name, alphabet,
             landscape.wt, landscape.combo_python_idxs,
+            pretrained_model_dir="/home/hury/databases/pretrained_models/esm/",
         )
     elif name in ["prot_bert_bfd", "prot_t5_xl_uniref50"]:
         encoder = fasthit.encoders.ProtTrans(
@@ -57,7 +58,7 @@ def make_encoder(name, landscape, alphabet):
         encoder = fasthit.encoders.ESM_Tokenizer(
             "esm-1v",
             landscape.wt, landscape.combo_python_idxs,
-            pretrained_model_dir="/home/hury/src/fasthit/pretrained_models/esm/",
+            pretrained_model_dir="/home/hury/databases/pretrained_models/esm/",
         )
     else:
         pass
@@ -189,27 +190,27 @@ def main():
     expmt_queries_per_round = 384
     model_queries_per_round = 3200
 
+    landscape_names = ["gb1:with_imputed"]
     # "rna:L14_RNA1", "rna:L50_RNA1", "rna:L100_RNA1", "rna:C20_L100_RNA1+2",
     # "rosetta:3msi", "gb1:with_imputed"
-    landscape_names = ["gb1:with_imputed"]
+    encodings = ["onehot"]
     # "onehot",
     # "georgiev",
     # "transformer", "unirep", "trrosetta",
-    # "esm-1b", "esm-1v", "esm-msa-1", "esm-msa-1b"
+    # "esm-1b", "esm-1v", "esm-msa-1", "esm-msa-1b", "esm-tok"
     # "prot_bert_bfd", "prot_t5_xl_uniref50",
-    encodings = ["esm-tok"]
+    model_names = ["gpr"]
     # "linear", "randomforest"
     # "mlp", "cnn",
     # "gpr", "rio",
     # "ensemble"
     # "finetune"
-    model_names = ["finetune"]
     gp_kernels = ["RBF"]
+    explorer_names = ["bo_evo"]
     # "random", "adalead", "bo_evo", "bo_enu",
     # "mlde", "rl"
-    explorer_names = ["adalead"]
-    # "LCB", "UCB", "EI", "PI", "TS"
     bo_util_funcs = ["LCB"]
+    # "LCB", "UCB", "EI", "PI", "TS"
     rl_cfg = [cfg]
 
     for cur_iter in itertools.product(
