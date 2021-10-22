@@ -3,9 +3,9 @@
 ## Examples
 Demos. are given in folder `examples`.
 ## Requirements
-- Python>=3.7
-- pytorch==1.8.0
-- gpytorch==1.4.2
+- Python==3.7
+- pytorch>=1.8.0,<=1.9.0
+- gpytorch>=1.4.2,<=1.5.0
 ## Installation
 1. Clone this repository and `cd` into it.
     ```console
