@@ -168,7 +168,7 @@ def make_explorer(
             util_func=kwargs["util_func"],
         )
     elif name == "rl":
-        explorer = fasthit.explorers.RL(
+        explorer = fasthit.explorers.rl.RL(
             encoder,
             model,
             rounds=rounds,
@@ -248,7 +248,7 @@ def main():
             log_file = (
                 f"runs_{type_name}/{spec_name}/"
                 + f"{explorer_name}/{encoding}/{model_name}/"
-                + f"test"
+                + f"expl_{explorer_name}"
                 + f"/run{i}.csv"
             )
             ###
