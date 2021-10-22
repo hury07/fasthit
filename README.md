@@ -58,5 +58,5 @@ Demos. are given in folder `examples`.
 ### Explorers
 1. DI-engine (reinforcement learning engine)
     ```console
-    pip install DI-engine==0.1.1
+    pip install DI-engine
     ```
