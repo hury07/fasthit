@@ -35,7 +35,8 @@ class BO_EVO(fasthit.Explorer):
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        util_func: str = "LCB",
+        seed: Optional[int] = None,
+        util_func: str = "UCB",
         recomb_rate: float = 0.,
     ):
         """
@@ -58,6 +59,7 @@ class BO_EVO(fasthit.Explorer):
             model_queries_per_round,
             starting_sequence,
             log_file,
+            seed,
         )
         self._alphabet = alphabet
         self._recomb_rate = recomb_rate
@@ -75,14 +77,14 @@ class BO_EVO(fasthit.Explorer):
         self._util_func = util_funcs[util_func]
 
     def _recombine_population(self, gen):
-        np.random.shuffle(gen)
+        self._rng.shuffle(gen)
         ret = []
         for i in range(0, len(gen) - 1, 2):
             strA = []
             strB = []
             switch = False
             for ind in range(len(gen[i])):
-                if np.random.random() < self._recomb_rate:
+                if self._rng.random() < self._recomb_rate:
                     switch = not switch
                 # putting together recombinants
                 if switch:
@@ -109,9 +111,9 @@ class BO_EVO(fasthit.Explorer):
         while len(actions) < self.model_queries_per_round / self.expmt_queries_per_round:
             action = []
             for pos in range(self._seq_len):
-                if np.random.random() < 1. / self._seq_len:
+                if self._rng.random() < 1. / self._seq_len:
                     pos_tuple = pos_changes[pos][
-                        np.random.randint(len(self._alphabet) - 1)
+                        self._rng.integers(len(self._alphabet) - 1)
                     ]
                     action.append(pos_tuple)
             if len(action) > 0 and tuple(action) not in actions:
@@ -211,7 +213,8 @@ class BO_EVO(fasthit.Explorer):
                     s_utils.generate_random_sequences(
                         self._seq_len,
                         self.expmt_queries_per_round - len(samples) - len(random_sequences),
-                        list(self._alphabet)
+                        list(self._alphabet),
+                        self._rng,
                     )
                 )
             random_sequences = sorted(random_sequences)
@@ -229,12 +232,11 @@ class BO_EVO(fasthit.Explorer):
     ) -> pd.DataFrame:
         return measured_sequences
 
-    @staticmethod
-    def Thompson_sample(measured_batch):
+    def Thompson_sample(self, measured_batch):
         """Pick a sequence via Thompson sampling."""
         fitnesses = np.cumsum([np.exp(10 * x[0]) for x in measured_batch])
         fitnesses = fitnesses / fitnesses[-1]
-        x = np.random.uniform()
+        x = self._rng.uniform()
         index = bisect_left(fitnesses, x)
         sequences = [x[1] for x in measured_batch]
         return sequences[index]
@@ -248,7 +250,7 @@ class BO_EVO(fasthit.Explorer):
         return preds - kappa * self.model.uncertainties
 
     def TS(self, preds):
-        return np.random.normal(preds, self.model.uncertainties)
+        return self._rng.normal(preds, self.model.uncertainties)
 
     def EI(self, preds):
         eps = 0.1

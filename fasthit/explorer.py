@@ -33,6 +33,7 @@ class Explorer(abc.ABC):
         model_queries_per_round: int,
         starting_sequence: str,
         log_file: Optional[str] = None,
+        seed: Optional[int] = None,
     ):
         """
         Create an Explorer.
@@ -67,6 +68,8 @@ class Explorer(abc.ABC):
         if self._log_file is not None:
             dir_path, _ = os.path.split(self._log_file)
             os.makedirs(dir_path, exist_ok=True)
+        
+        self._rng = np.random.default_rng(seed)
 
     @abc.abstractmethod
     def propose_sequences(

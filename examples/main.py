@@ -1,5 +1,4 @@
 import itertools
-import numpy as np
 import torch
 
 import fasthit
@@ -47,7 +46,6 @@ def make_encoder(name, landscape, alphabet):
         encoder = fasthit.encoders.ESM(
             name, alphabet,
             landscape.wt, landscape.combo_python_idxs,
-            pretrained_model_dir="/home/hury/databases/pretrained_models/esm/",
         )
     elif name in ["prot_bert_bfd", "prot_t5_xl_uniref50"]:
         encoder = fasthit.encoders.ProtTrans(
@@ -58,7 +56,7 @@ def make_encoder(name, landscape, alphabet):
         encoder = fasthit.encoders.ESM_Tokenizer(
             "esm-1v",
             landscape.wt, landscape.combo_python_idxs,
-            pretrained_model_dir="/home/hury/databases/pretrained_models/esm/",
+            pretrained_model_dir="/home/hury/src/fasthit/pretrained_models/esm/",
         )
     else:
         pass
@@ -165,10 +163,11 @@ def make_explorer(
             starting_sequence=start_seq,
             alphabet=alphabet,
             log_file=log_file,
+            seed=kwargs["seed"],
             util_func=kwargs["util_func"],
         )
     elif name == "rl":
-        explorer = fasthit.explorers.rl.RL(
+        explorer = fasthit.explorers.RL(
             encoder,
             model,
             rounds=rounds,
@@ -185,7 +184,7 @@ def make_explorer(
 
 
 def main():
-    seed = 42
+    seeds = [0, 42, 12, 25, 32]
     rounds = 10
     expmt_queries_per_round = 384
     model_queries_per_round = 3200
@@ -197,23 +196,24 @@ def main():
     # "onehot",
     # "georgiev",
     # "transformer", "unirep", "trrosetta",
-    # "esm-1b", "esm-1v", "esm-msa-1", "esm-msa-1b", "esm-tok"
+    # "esm-1b", "esm-1v", "esm-msa-1", "esm-msa-1b", "esm-tok",
     # "prot_bert_bfd", "prot_t5_xl_uniref50",
     model_names = ["gpr"]
-    # "linear", "randomforest"
+    # "linear", "randomforest",
     # "mlp", "cnn",
     # "gpr", "rio",
-    # "ensemble"
+    # "ensemble",
     # "finetune"
     gp_kernels = ["RBF"]
     explorer_names = ["bo_evo"]
     # "random", "adalead", "bo_evo", "bo_enu",
     # "mlde", "rl"
-    bo_util_funcs = ["LCB"]
+    bo_util_funcs = ["UCB"]
     # "LCB", "UCB", "EI", "PI", "TS"
     rl_cfg = [cfg]
 
     for cur_iter in itertools.product(
+        seeds,
         landscape_names,
         encodings,
         model_names,
@@ -222,6 +222,7 @@ def main():
         bo_util_funcs,
         rl_cfg,
     ):
+        seed, \
         landscape_name, encoding, model_name, gp_kernel, explorer_name, \
         bo_util_func, \
         rl_cfg, \
@@ -231,6 +232,7 @@ def main():
             "util_func": bo_util_func,
             "kernel": gp_kernel,
             "cfg": rl_cfg,
+            "seed": seed,
         }
         ###
         type_name, spec_name = landscape_name.split(":")
@@ -238,7 +240,6 @@ def main():
         encoder = make_encoder(encoding, landscape, alphabet)
         ###
         for i, start_seq in enumerate(problem["starts"]):
-            np.random.seed(seed)
             utils.set_torch_seed(seed)
             ###
             model = make_model(
@@ -248,7 +249,7 @@ def main():
             log_file = (
                 f"runs_{type_name}/{spec_name}/"
                 + f"{explorer_name}/{encoding}/{model_name}/"
-                + f"expl_{explorer_name}"
+                + f"seed_{seed}"
                 + f"/run{i}.csv"
             )
             ###
