@@ -24,6 +24,7 @@ class MLDE(fasthit.Explorer):
         landscape: fasthit.Landscape,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
+        seed: Optional[int] = None,
     ):
         name = f"MLDE_model={model}"
 
@@ -35,7 +36,8 @@ class MLDE(fasthit.Explorer):
             expmt_queries_per_round,
             model_queries_per_round,
             starting_sequence,
-            log_file=log_file,
+            log_file,
+            seed,
         )
 
         self._alphabet = alphabet
@@ -64,7 +66,7 @@ class MLDE(fasthit.Explorer):
             self.search_map = self.ddG_df.loc[:self.model_queries_per_round-1]
             ### sample training data
             #train_idxs = random.sample(range(len(self.search_map)), self.training_data_size)
-            train_idxs = np.random.choice(len(self.search_map), self.training_data_size, replace=False)
+            train_idxs = self._rng.choice(len(self.search_map), self.training_data_size, replace=False)
             test_idxs = [idx for idx in range(len(self.search_map)) if idx not in train_idxs]
             train_seqs = self.search_map.loc[train_idxs]["AACombo"].to_numpy()
             ### search space shrinks
@@ -137,7 +139,7 @@ class MLDE(fasthit.Explorer):
             return measured_sequences, train_seqs, np.nan
         ###
         #train_idxs = random.sample(range(len(self.search_map)), self.training_data_size)
-        train_idxs = np.random.choice(len(self.search_map), self.training_data_size, replace=False)
+        train_idxs = self._rng.choice(len(self.search_map), self.training_data_size, replace=False)
         test_idxs = [idx for idx in range(len(self.search_map)) if idx not in train_idxs]
         train_seqs = self.search_map.loc[train_idxs]["AACombo"].to_numpy()
         self.search_map = self.search_map.loc[test_idxs].reset_index(drop=True)

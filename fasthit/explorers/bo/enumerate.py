@@ -28,7 +28,8 @@ class BO_ENU(fasthit.Explorer):
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        util_func: str = "LCB",
+        seed: Optional[int] = None,
+        util_func: str = "UCB",
         eval_batch_size: int = 256,
     ):
         """Initialize the explorer."""
@@ -44,6 +45,7 @@ class BO_ENU(fasthit.Explorer):
             model_queries_per_round,
             starting_sequence,
             log_file,
+            seed,
         )
         self._alphabet = alphabet
         self._best_fitness = -np.inf
@@ -88,7 +90,6 @@ class BO_ENU(fasthit.Explorer):
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame,
-        landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose `batch_size` samples."""
         samples = []
@@ -120,7 +121,7 @@ class BO_ENU(fasthit.Explorer):
         return preds - kappa * self.model.uncertainties
 
     def TS(self, preds):
-        return np.random.normal(preds, self.model.uncertainties)
+        return self._rng.normal(preds, self.model.uncertainties)
 
     def EI(self, preds):
         eps = 0.1
