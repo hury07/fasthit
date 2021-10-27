@@ -27,8 +27,9 @@ class Random(fasthit.Explorer):
         expmt_queries_per_round: int,
         model_queries_per_round: int,
         starting_sequence: str,
-        log_file: Optional[str] = None,
         alphabet: str = s_utils.AAS,
+        log_file: Optional[str] = None,
+        seed: Optional[int] = 42,
         mu: float = 1,
         elitist: bool = False,
     ):
@@ -55,6 +56,7 @@ class Random(fasthit.Explorer):
             model_queries_per_round,
             starting_sequence,
             log_file,
+            seed,
         )
         self._mu = mu
         self._alphabet = alphabet
@@ -62,19 +64,19 @@ class Random(fasthit.Explorer):
 
     def propose_sequences(
         self,
-        measured_sequences: pd.DataFrame,
-        landscape: Optional[fasthit.Landscape] = None,
+        measured_sequences: pd.DataFrame
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
         old_sequences = measured_sequences["sequence"]
         old_sequence_set = set(old_sequences)
         new_seqs = set()
         while len(new_seqs) <= self.model_queries_per_round:
-            seq = np.random.choice(old_sequences)
+            seq = self._rng.choice(old_sequences)
             new_seq = s_utils.generate_random_mutant(
                 seq,
                 self._mu / len(seq),
-                alphabet=list(self._alphabet)
+                list(self._alphabet),
+                self._rng,
             )
             if new_seq not in old_sequence_set:
                 new_seqs.add(new_seq)

@@ -1,8 +1,8 @@
 """Define GB1 landscape and problem registry."""
+from typing import Dict, Sequence
 import os
 import numpy as np
 import pandas as pd
-from typing import Dict, Sequence
 
 import fasthit
 
@@ -152,6 +152,9 @@ def registry() -> Dict[str, Dict]:
         "FWAA",
         "FWLG",
     ]
+    wild_type = [
+        "VDGV",
+    ]
 
     problems = {
         "only_measured": {
@@ -167,7 +170,7 @@ def registry() -> Dict[str, Dict]:
                 "search_space": "V39,D40,G41,V54",
             },
             "starts": with_imputed,
-            #"starts": with_imputed_max,
+            #"starts": wild_type,
         },
     }
 

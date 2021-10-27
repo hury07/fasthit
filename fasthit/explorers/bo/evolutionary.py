@@ -1,12 +1,14 @@
+from typing import Optional, Tuple
+from bisect import bisect_left
+
 import numpy as np
 from scipy.stats import norm
 import pandas as pd
 
-from bisect import bisect_left
-from typing import Optional, Tuple
-
 import fasthit
 from fasthit.utils import sequence_utils as s_utils
+
+from . import util_funcs as uf
 
 
 class BO_EVO(fasthit.Explorer):
@@ -35,7 +37,9 @@ class BO_EVO(fasthit.Explorer):
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        proposal_func: str = "LCB",
+        seed: Optional[int] = 42,
+        util_func: str = "UCB",
+        uf_param: float = 0.,
         recomb_rate: float = 0.,
     ):
         """
@@ -46,7 +50,7 @@ class BO_EVO(fasthit.Explorer):
                 BO proposes samples, default 0.
 
         """
-        name = f"BO_EVO_proposal-function={proposal_func}"
+        name = f"BO_EVO_proposal-function={util_func}"
         assert hasattr(model, "uncertainties")
 
         super().__init__(
@@ -58,31 +62,34 @@ class BO_EVO(fasthit.Explorer):
             model_queries_per_round,
             starting_sequence,
             log_file,
+            seed,
         )
         self._alphabet = alphabet
         self._recomb_rate = recomb_rate
         self._best_fitness = 0.0
         self._state = s_utils.string_to_one_hot(starting_sequence, alphabet)
         self._seq_len = len(self.starting_sequence)
-        proposal_funcs = {
-            "UCB": self.UCB,
-            "LCB": self.LCB,
-            "TS": self.TS,
-            "EI": self.EI,
-            "PI": self.PI,
-            "Greedy": self.Greedy,
+
+        util_funcs = {
+            "UCB": uf.UCB,
+            "LCB": uf.LCB,
+            "EI": uf.EI,
+            "PI": uf.PI,
+            "TS": uf.TS,
+            "Greedy": uf.Greedy,
         }
-        self._proposal_func = proposal_funcs[proposal_func]
+        self._util_func = util_funcs[util_func]
+        self._uf_param = uf_param
 
     def _recombine_population(self, gen):
-        np.random.shuffle(gen)
+        self._rng.shuffle(gen)
         ret = []
         for i in range(0, len(gen) - 1, 2):
             strA = []
             strB = []
             switch = False
             for ind in range(len(gen[i])):
-                if np.random.random() < self._recomb_rate:
+                if self._rng.random() < self._recomb_rate:
                     switch = not switch
                 # putting together recombinants
                 if switch:
@@ -109,9 +116,9 @@ class BO_EVO(fasthit.Explorer):
         while len(actions) < self.model_queries_per_round / self.expmt_queries_per_round:
             action = []
             for pos in range(self._seq_len):
-                if np.random.random() < 1. / self._seq_len:
+                if self._rng.random() < 1. / self._seq_len:
                     pos_tuple = pos_changes[pos][
-                        np.random.randint(len(self._alphabet) - 1)
+                        self._rng.integers(len(self._alphabet) - 1)
                     ]
                     action.append(pos_tuple)
             if len(action) > 0 and tuple(action) not in actions:
@@ -136,7 +143,13 @@ class BO_EVO(fasthit.Explorer):
         encodings = self.encoder.encode(states_to_screen)
         preds = self.model.get_fitness(encodings)
         ### Optimize acquisition function
-        action_idx = np.argmax(self._proposal_func(preds)) ### greedy TODO: any improvement?
+        kwargs = {
+            "best_val": self._best_fitness,
+            "rng": self._rng,
+        }
+        action_idx = np.argmax(self._util_func(
+            preds, self.model.uncertainties, h_param = self._uf_param, **kwargs
+        )) ### greedy TODO: any improvement?
         uncertainty = self.model.uncertainties[action_idx]
         ###
         action = actions_to_screen[action_idx]
@@ -148,7 +161,6 @@ class BO_EVO(fasthit.Explorer):
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame,
-        landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
         last_round = measured_sequences["round"].max()
@@ -211,7 +223,8 @@ class BO_EVO(fasthit.Explorer):
                     s_utils.generate_random_sequences(
                         self._seq_len,
                         self.expmt_queries_per_round - len(samples) - len(random_sequences),
-                        list(self._alphabet)
+                        list(self._alphabet),
+                        self._rng,
                     )
                 )
             random_sequences = sorted(random_sequences)
@@ -229,170 +242,11 @@ class BO_EVO(fasthit.Explorer):
     ) -> pd.DataFrame:
         return measured_sequences
 
-    @staticmethod
-    def Thompson_sample(measured_batch):
+    def Thompson_sample(self, measured_batch):
         """Pick a sequence via Thompson sampling."""
         fitnesses = np.cumsum([np.exp(10 * x[0]) for x in measured_batch])
         fitnesses = fitnesses / fitnesses[-1]
-        x = np.random.uniform()
+        x = self._rng.uniform()
         index = bisect_left(fitnesses, x)
         sequences = [x[1] for x in measured_batch]
         return sequences[index]
-
-    def UCB(self, preds):
-        kappa = 0.05
-        return preds + kappa * self.model.uncertainties
-
-    def LCB(self, preds):
-        kappa = 0.1
-        return preds - kappa * self.model.uncertainties
-
-    def TS(self, preds):
-        return np.random.normal(preds, self.model.uncertainties)
-
-    def EI(self, preds):
-        eps = 0.1
-        improves = preds - self._best_fitness - eps
-        z = improves / self.model.uncertainties
-        return improves * norm.cdf(z) + self.model.uncertainties * norm.pdf(z)
-
-    def PI(self, preds):
-        eps = 0.1
-        return norm.cdf(
-            (preds - self._best_fitness - eps)
-            / self.model.uncertainties
-        )
-
-    def Greedy(self, preds):
-        return preds
-
-
-class BO_ENU(fasthit.Explorer):
-    """Explorer using unlimited Bayesian Optimization.
-
-    IMPORTANT: This explorer is not limited by any virtual screening restriction,
-    and is used to find the unrestricted performance of Bayesian Optimization
-    techniques in small landscapes.
-
-    Reference: http://krasserm.github.io/2018/03/21/bayesian-optimization/
-    """
-
-    def __init__(
-        self,
-        encoder: fasthit.Encoder,
-        model: fasthit.Model,
-        rounds: int,
-        expmt_queries_per_round: int, # default: 384
-        model_queries_per_round: int, # default: 800
-        starting_sequence: str,
-        alphabet: str = s_utils.AAS,
-        log_file: Optional[str] = None,
-        proposal_func: str = "LCB",
-        eval_batch_size: int = 256,
-    ):
-        """Initialize the explorer."""
-        name = f"BO_ENU_Explorer-proposal_function={proposal_func}"
-        assert hasattr(model, "uncertainties")
-        ###
-        super().__init__(
-            name,
-            encoder,
-            model,
-            rounds,
-            expmt_queries_per_round,
-            model_queries_per_round,
-            starting_sequence,
-            log_file,
-        )
-        self._alphabet = alphabet
-        self._best_fitness = 0.
-        self._seq_len = len(starting_sequence)
-        self._eval_batch_size = eval_batch_size
-        proposal_funcs = {
-            "UCB": self.UCB,
-            "LCB": self.LCB,
-            "TS": self.TS,
-            "EI": self.EI,
-            "PI": self.PI,
-            "Greedy": self.Greedy,
-        }
-        self._proposal_func = proposal_funcs[proposal_func]
-
-    def _pick_seqs(self):
-        """Propose a batch of new sequences.
-        """
-        def enum_and_eval(curr_seq):
-            # if we have a full sequence, then let's evaluate
-            nonlocal new_seqs, maxima
-            if len(curr_seq) == self._seq_len:
-                new_seqs.append(curr_seq)
-                if len(new_seqs) >= self._eval_batch_size:
-                    encodings = self.encoder.encode(new_seqs)
-                    fitness = self.model.get_fitness(encodings)
-                    acquisition = self._proposal_func(fitness)
-                    maxima.extend(
-                        [acquisition[i], fitness[i], new_seqs[i]]
-                        for i in range(len(new_seqs))
-                    )
-                    new_seqs = []
-            else:
-                for char in list(self._alphabet):
-                    enum_and_eval(curr_seq + char)
-        maxima = []
-        new_seqs = []
-        enum_and_eval("")
-        # Sort descending based on the value.
-        return sorted(maxima, reverse=True, key=lambda x: x[0])
-
-    def propose_sequences(
-        self,
-        measured_sequences: pd.DataFrame,
-        landscape: Optional[fasthit.Landscape] = None,
-    ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
-        """Propose `batch_size` samples."""
-        samples = []
-        new_fitnesses = []
-        all_measured_seqs = set(measured_sequences["sequence"].values)
-        for _, new_fitness, new_seq in self._pick_seqs():
-            if (
-                len(samples) < self.expmt_queries_per_round
-                and new_seq not in all_measured_seqs
-            ):
-                self._best_fitness = max(new_fitness, self._best_fitness)
-                samples.append(new_seq)
-                all_measured_seqs.add(new_seq)
-                new_fitnesses.append(new_fitness)
-        return measured_sequences, np.array(samples), np.array(new_fitnesses)
-
-    def get_training_data(
-        self,
-        measured_sequences: pd.DataFrame,
-    ) -> pd.DataFrame:
-        return measured_sequences
-
-    def UCB(self, preds):
-        kappa = 0.05
-        return preds + kappa * self.model.uncertainties
-
-    def LCB(self, preds):
-        kappa = 0.05
-        return preds - kappa * self.model.uncertainties
-
-    def TS(self, preds):
-        return np.random.normal(preds, self.model.uncertainties)
-
-    def EI(self, preds):
-        eps = 0.1
-        improves = preds - self._best_fitness - eps
-        z = improves / self.model.uncertainties
-        return improves * norm.cdf(z) + self.model.uncertainties * norm.pdf(z)
-
-    def PI(self, preds):
-        eps = 0.2
-        return norm.cdf(
-            (preds - self._best_fitness - eps)
-            / self.model.uncertainties
-        )
-
-    def Greedy(self, preds):
-        return preds

@@ -31,6 +31,7 @@ class Adalead(fasthit.Explorer):
         starting_sequence: str,
         log_file: Optional[str] = None,
         alphabet: str = s_utils.AAS,
+        seed: Optional[int] = 42,
         mu: int = 1,
         recomb_rate: float = 0,
         threshold: float = 0.05,
@@ -59,6 +60,7 @@ class Adalead(fasthit.Explorer):
             model_queries_per_round,
             starting_sequence,
             log_file,
+            seed,
         )
         self._alphabet = alphabet
         self._threshold = threshold
@@ -72,14 +74,14 @@ class Adalead(fasthit.Explorer):
         if len(gen) == 1:
             return gen
 
-        np.random.shuffle(gen)
+        self._rng.shuffle(gen)
         ret = []
         for i in range(0, len(gen) - 1, 2):
             strA = []
             strB = []
             switch = False
             for ind in range(len(gen[i])):
-                if np.random.rand() < self._recomb_rate:
+                if self._rng.rand() < self._recomb_rate:
                     switch = not switch
                 # putting together recombinants
                 if switch:
@@ -94,8 +96,7 @@ class Adalead(fasthit.Explorer):
 
     def propose_sequences(
         self,
-        measured_sequences: pd.DataFrame,
-        landscape: Optional[fasthit.Landscape] = None,
+        measured_sequences: pd.DataFrame
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """Propose top `expmt_queries_per_round` sequences for evaluation."""
         measured_sequence_set = set(measured_sequences["sequence"])
@@ -134,6 +135,7 @@ class Adalead(fasthit.Explorer):
                             node,
                             self._mu / len(node),
                             list(self._alphabet),
+                            self._rng,
                         )
                         # Stop when we generate new child that has never been seen
                         # before

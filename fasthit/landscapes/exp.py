@@ -1,12 +1,13 @@
 """Interface between algorithm and measurements"""
+from typing import Sequence
 import os
 import time
 from Bio import SeqIO
 import numpy as np
 import pandas as pd
-from typing import Dict, Sequence
 
 import fasthit
+
 
 class EXP(fasthit.Landscape):
     def __init__(
@@ -23,7 +24,7 @@ class EXP(fasthit.Landscape):
         if sequence_csv is not None:
             assert sequence_csv.endswith(".csv")
         else:
-            sequence_csv = "outputs/proposed_seqs.csv"
+            sequence_csv = "data/proposed_seqs.csv"
 
         self._sequence_file = sequence_csv
         dir_path, _ = os.path.split(self._sequence_file)

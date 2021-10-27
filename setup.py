@@ -19,7 +19,7 @@ setup(
         "fast-hit: a fully-automated, algorithm-driven biological sequence design platform"
         "enabled by automated, high-throughput experiment infrastructure."
     ),
-    url="https://github.com/hury07/fast-hit",
+    url="https://github.com/hury07/fasthit",
     author="Ruyun Hu",
     author_email="hury07@hotmail.com",
     license="MIT",

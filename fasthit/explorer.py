@@ -1,14 +1,13 @@
 """Defines abstract base explorer class."""
+from typing import Dict, Optional, Tuple
 import os
 import json
+import abc
 
 import time
 import tqdm
 import warnings
 from datetime import datetime
-
-import abc
-from typing import Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -33,6 +32,7 @@ class Explorer(abc.ABC):
         model_queries_per_round: int,
         starting_sequence: str,
         log_file: Optional[str] = None,
+        seed: Optional[int] = 42,
     ):
         """
         Create an Explorer.
@@ -67,12 +67,13 @@ class Explorer(abc.ABC):
         if self._log_file is not None:
             dir_path, _ = os.path.split(self._log_file)
             os.makedirs(dir_path, exist_ok=True)
+        
+        self._rng = np.random.default_rng(seed)
 
     @abc.abstractmethod
     def propose_sequences(
         self,
         measured_sequences: pd.DataFrame,
-        landscape: Optional[fasthit.Landscape] = None,
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         """
         Propose a list of sequences to be measured in the next round.
@@ -124,6 +125,7 @@ class Explorer(abc.ABC):
     def run(
         self,
         landscape: fasthit.Landscape,
+        init_seqs_file: str = None,
         verbose: bool = True,
     ) -> Tuple[pd.DataFrame, Dict]:
         """
@@ -149,14 +151,21 @@ class Explorer(abc.ABC):
         }
 
         # Initial sequences and their scores
+        if init_seqs_file is None:
+            init_seqs = [self._starting_sequence]
+        else:
+            assert init_seqs_file.endswith(".csv")
+            data = pd.read_csv(init_seqs_file)
+            init_seqs = data["Variants"].to_numpy()
+
         measured_data = pd.DataFrame(
             {
-                "sequence": self._starting_sequence,
+                "sequence": init_seqs,
                 "model_score": np.nan,
-                "true_score": landscape.get_fitness([self._starting_sequence]),
+                "true_score": landscape.get_fitness(init_seqs),
                 "round": 0,
                 "model_cost": self._model.cost,
-                "measurement_cost": 1,
+                "measurement_cost": len(init_seqs),
             }
         )
         training_data = measured_data
@@ -172,7 +181,7 @@ class Explorer(abc.ABC):
             labels = training_data["true_score"].to_numpy()
             self._model.train(encodings, labels)
 
-            measured_data, seqs, preds = self.propose_sequences(measured_data, landscape)
+            measured_data, seqs, preds = self.propose_sequences(measured_data)
             if len(seqs) > self._expmt_queries_per_round:
                 warnings.warn(
                     "Must propose <= `self._expmt_queries_per_round` sequences per round"

@@ -1,4 +1,4 @@
-import numpy as np
+import itertools
 import torch
 
 import fasthit
@@ -22,6 +22,10 @@ def make_landscape(type_name, spec_name):
     elif type_name == "gb1":
         problem = fasthit.landscapes.gb1.registry()[spec_name]
         landscape = fasthit.landscapes.GB1(**problem["params"])
+        alphabet = s_utils.AAS
+    elif type_name == "exp":
+        problem = fasthit.landscapes.exp.registry()[spec_name]
+        landscape = fasthit.landscapes.EXP(**problem["params"])
         alphabet = s_utils.AAS
     else:
         pass
@@ -47,11 +51,17 @@ def make_encoder(name, landscape, alphabet):
             name, alphabet,
             landscape.wt, landscape.combo_python_idxs,
         )
+    elif name in ["esm-tok"]:
+        encoder = fasthit.encoders.ESM_Tokenizer(
+            "esm-1v",
+            landscape.wt, landscape.combo_python_idxs,
+            pretrained_model_dir="/home/hury/src/fasthit/pretrained_models/esm/",
+        )
     else:
         pass
     return encoder
 
-def make_model(name, seq_length, n_features, **kwargs):
+def make_model(name, seq_length, n_features, landscape, **kwargs):
     if name == "linear":
         model = fasthit.models.LinearRegression()
     elif name == "randomforest":
@@ -79,6 +89,13 @@ def make_model(name, seq_length, n_features, **kwargs):
             fasthit.models.MLP(
                 seq_length=seq_length, input_features=n_features,
             ),
+        )
+    elif name == "finetune":
+        model = fasthit.models.Finetune(
+            pretrained_model_dir="/home/hury/src/fasthit/pretrained_models/esm/",
+            pretrained_model_name="esm-1v",
+            pretrained_model_exprs=[33],
+            target_python_idxs=landscape.combo_python_idxs,
         )
     else:
         pass
@@ -124,7 +141,7 @@ def make_explorer(
             log_file=log_file,
         )
     elif name == "bo_enu":
-        explorer = fasthit.explorers.BO_ENU(
+        explorer = fasthit.explorers.bo.BO_ENU(
             encoder,
             model,
             rounds=rounds,
@@ -136,7 +153,7 @@ def make_explorer(
             proposal_func=kwargs["ac_func"],
         )
     elif name == "bo_evo":
-        explorer = fasthit.explorers.BO_EVO(
+        explorer = fasthit.explorers.bo.BO_EVO(
             encoder,
             model,
             rounds=rounds,
@@ -145,65 +162,95 @@ def make_explorer(
             starting_sequence=start_seq,
             alphabet=alphabet,
             log_file=log_file,
-            proposal_func=kwargs["ac_func"],
+            seed=kwargs["seed"],
+            util_func=kwargs["util_func"],
+            uf_param=kwargs["uf_param"],
         )
     else:
         pass
     return explorer
 
 def main():
-    seed = 42
+    seeds = [42] #[0, 12, 123, 1234, 12345] # [42]
     rounds = 10
     expmt_queries_per_round = 384
     model_queries_per_round = 3200
-    kwargs = {
-        "ac_func": "LCB",
-        "kernel": "RBF",
-    }
-    ###
-    for landscape_name in ["gb1:with_imputed"]:
-        # "rna:L14_RNA1", "rna:L50_RNA1", "rna:L100_RNA1", "rna:C20_L100_RNA1+2",
-        # "rosetta:3msi", "gb1:with_imputed"
+
+    landscape_names = ["gb1:with_imputed"]
+    # "rna:L14_RNA1", "rna:L50_RNA1", "rna:L100_RNA1", "rna:C20_L100_RNA1+2",
+    # "rosetta:3msi", "gb1:with_imputed"
+    encodings = ["onehot"]
+    # "onehot",
+    # "georgiev",
+    # "transformer", "unirep", "trrosetta",
+    # "esm-1b", "esm-1v", "esm-msa-1", "esm-msa-1b", "esm-tok",
+    # "prot_bert_bfd", "prot_t5_xl_uniref50",
+    model_names = ["gpr"]
+    # "linear", "randomforest",
+    # "mlp", "cnn",
+    # "gpr", "rio",
+    # "ensemble",
+    # "finetune"
+    gp_kernels = ["RBF"]
+    explorer_names = ["bo_evo"]
+    # "random", "adalead", "bo_evo", "bo_enu",
+    # "mlde", "rl"
+    bo_util_funcs = ["LCB"]
+    # "UCB", "LCB", "EI", "PI", "TS"
+    bo_uf_params = [0.1]
+    
+
+    for cur_iter in itertools.product(
+        landscape_names,
+        encodings,
+        model_names,
+        gp_kernels,
+        explorer_names,
+        bo_util_funcs,
+        bo_uf_params,
+    ):
+        landscape_name, encoding, model_name, gp_kernel, explorer_name, \
+        bo_util_func, bo_uf_param\
+        = cur_iter
+        ###
+        
+        ###
         type_name, spec_name = landscape_name.split(":")
         problem, landscape, alphabet = make_landscape(type_name, spec_name)
-        for encoding in ["onehot"]:
-            # "onehot",
-            # "georgiev",
-            # "transformer", "unirep", "trrosetta",
-            # "esm-1b", "esm-1v", "esm-msa-1", "esm-msa-1b"
-            # "prot_bert_bfd", "prot_t5_xl_uniref50",
-            encoder = make_encoder(encoding, landscape, alphabet)
-            for explorer_name in ["bo_evo"]:
-                # "random", "adalead", "bo_evo", "bo_enu",
-                # "mlde"
-                for model_name in ["gpr"]:
-                    # "linear", "randomforest"
-                    # "mlp", "cnn",
-                    # "gpr", "rio",
-                    # "ensemble"
-                    for i, start_seq in enumerate(problem["starts"]):
-                        np.random.seed(seed)
-                        utils.set_torch_seed(seed)
-                        ###
-                        model = make_model(
-                            model_name, len(start_seq), encoder.n_features,
-                            **kwargs
-                        )
-                        log_file = (
-                            f"runs_{type_name}/{spec_name}/"
-                            + f"{explorer_name}/{encoding}/{model_name}/"
-                            + f"enc_{encoding}"
-                            + f"/run{i}.csv"
-                        )
-                        ###
-                        explorer = make_explorer(
-                            explorer_name, alphabet, encoder, model, start_seq, rounds,
-                            expmt_queries_per_round, model_queries_per_round, log_file,
-                            **kwargs
-                        )
-                        explorer.run(landscape, verbose=False)
-                        del explorer, model
-                        torch.cuda.empty_cache()
+        encoder = make_encoder(encoding, landscape, alphabet)
+        ###
+        for i, seed in enumerate(seeds):
+            kwargs = {
+                "seed": seed,
+                "util_func": bo_util_func,
+                "uf_param": bo_uf_param,
+                "kernel": gp_kernel,
+            }
+            for j, start_seq in enumerate(problem["starts"]):
+                utils.set_torch_seed(seed)
+                ###
+                model = make_model(
+                    model_name, len(start_seq), encoder.n_features, landscape,
+                    **kwargs
+                )
+
+                k = i * len(problem["starts"]) + j
+                log_file = (
+                    f"runs_{type_name}/{spec_name}/"
+                    + f"{explorer_name}/{encoding}/{model_name}/"
+                    #+ f"{bo_util_func}_{bo_uf_param}"
+                    + f"test"
+                    + f"/run{k}.csv"
+                )
+                ###
+                explorer = make_explorer(
+                    explorer_name, alphabet, encoder, model, start_seq, rounds,
+                    expmt_queries_per_round, model_queries_per_round, log_file,
+                    **kwargs
+                )
+                explorer.run(landscape, verbose=True)#, init_seqs_file="inputs/gb1/init_seqs.csv")
+                del explorer, model
+                torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     main()

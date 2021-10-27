@@ -1,9 +1,9 @@
+from typing import Sequence
 import os
 import math
 import numpy as np
 import pandas as pd
 import torch
-from typing import Sequence
 
 import fasthit
 

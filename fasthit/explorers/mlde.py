@@ -1,9 +1,8 @@
 """Defines the Machine Learning-assisted Directed Evolution (MLDE) explorer class."""
+from typing import Optional, Tuple
 import os
 import warnings
-from typing import Optional, Tuple
 
-#import random
 import numpy as np
 import pandas as pd
 
@@ -23,8 +22,10 @@ class MLDE(fasthit.Explorer):
         expmt_queries_per_round: int,
         model_queries_per_round: int, #constrained_space_size
         starting_sequence: str,
+        landscape: fasthit.Landscape,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
+        seed: Optional[int] = 42,
     ):
         name = f"MLDE_model={model}"
 
@@ -36,15 +37,16 @@ class MLDE(fasthit.Explorer):
             expmt_queries_per_round,
             model_queries_per_round,
             starting_sequence,
-            log_file=log_file,
+            log_file,
+            seed,
         )
 
         self._alphabet = alphabet
+        self._landscape = landscape
 
     def propose_sequences(
         self,
-        measured_sequences: pd.DataFrame,
-        landscape: Optional[fasthit.Landscape] = None,
+        measured_sequences: pd.DataFrame
     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
         last_round = measured_sequences["round"].max()
         if last_round == 0:
@@ -57,7 +59,7 @@ class MLDE(fasthit.Explorer):
             ### filtered out variants not contained in the landscape search space.
             idxs = []
             for idx in range(len(ddG_df)):
-                if ddG_df.loc[idx, "AACombo"] in landscape.sequences.keys():
+                if ddG_df.loc[idx, "AACombo"] in self._landscape.sequences.keys():
                     idxs.append(idx)
             ddG_df = ddG_df.loc[idxs]
             ### prioritized and filtered by ddG
@@ -65,7 +67,7 @@ class MLDE(fasthit.Explorer):
             self.search_map = self.ddG_df.loc[:self.model_queries_per_round-1]
             ### sample training data
             #train_idxs = random.sample(range(len(self.search_map)), self.training_data_size)
-            train_idxs = np.random.choice(len(self.search_map), self.training_data_size, replace=False)
+            train_idxs = self._rng.choice(len(self.search_map), self.training_data_size, replace=False)
             test_idxs = [idx for idx in range(len(self.search_map)) if idx not in train_idxs]
             train_seqs = self.search_map.loc[train_idxs]["AACombo"].to_numpy()
             ### search space shrinks
@@ -77,7 +79,7 @@ class MLDE(fasthit.Explorer):
         ### all the remaining variants will be measured
         if len(self.search_map) <= eval_size:
             new_seqs = self.search_map["AACombo"].to_numpy()
-            new_fitness = landscape.get_fitness(new_seqs)
+            new_fitness = self._landscape.get_fitness(new_seqs)
             measured_sequences = measured_sequences.append(
                 pd.DataFrame(
                     {
@@ -101,7 +103,7 @@ class MLDE(fasthit.Explorer):
         test_scores = self.model.get_fitness(encodings)
         eval_idxs = test_scores.argsort()[::-1][:eval_size]
         new_seqs = [test_seqs[idx] for idx in eval_idxs]
-        new_fitness = landscape.get_fitness(new_seqs)
+        new_fitness = self._landscape.get_fitness(new_seqs)
         measured_sequences = measured_sequences.append(
             pd.DataFrame(
                 {
@@ -138,7 +140,7 @@ class MLDE(fasthit.Explorer):
             return measured_sequences, train_seqs, np.nan
         ###
         #train_idxs = random.sample(range(len(self.search_map)), self.training_data_size)
-        train_idxs = np.random.choice(len(self.search_map), self.training_data_size, replace=False)
+        train_idxs = self._rng.choice(len(self.search_map), self.training_data_size, replace=False)
         test_idxs = [idx for idx in range(len(self.search_map)) if idx not in train_idxs]
         train_seqs = self.search_map.loc[train_idxs]["AACombo"].to_numpy()
         self.search_map = self.search_map.loc[test_idxs].reset_index(drop=True)

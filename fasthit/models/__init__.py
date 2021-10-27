@@ -1,14 +1,15 @@
 ### sklearn models
-from fasthit.models.sklearn_models import SklearnModel
-from fasthit.models.sklearn_models import (
+from .sklearn_models import SklearnModel
+from .sklearn_models import (
     LinearRegression,
     RandomForestRegressor,
 )
 ### pytorch models
-from fasthit.models.torch_model import TorchModel
-from fasthit.models.mlp import MLP
-from fasthit.models.cnn import CNN
+from .torch_model import TorchModel
+from .mlp import MLP
+from .cnn import CNN
+from .finetune_model import Finetune
 ### uncertainty models
-from fasthit.models.ensemble import Ensemble
-from fasthit.models.gpr import GPRegressor
-from fasthit.models.rio import RIO
+from .ensemble import Ensemble
+from .gpr import GPRegressor
+from .rio import RIO

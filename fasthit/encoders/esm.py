@@ -1,9 +1,9 @@
+from typing import Optional, Sequence, Tuple, Union
 import os
 import math
 import numpy as np
 import pandas as pd
 import torch
-from typing import Optional, Sequence, Tuple, Union
 ###
 from argparse import Namespace
 import warnings
@@ -17,7 +17,6 @@ except ImportError:
 
 import fasthit
 
-_filedir = os.path.dirname(__file__)
 _homedir = os.path.expanduser("~")
 
 encodings = pd.DataFrame(
@@ -69,7 +68,7 @@ class ESM(fasthit.Encoder):
         
         self._device = torch.device('cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu')
         if pretrained_model_dir is None:
-            pretrained_model_dir = _filedir + "/../../pretrained_models/esm/"
+            pretrained_model_dir = _homedir + "/databases/pretrained_models/esm/"
         pretrained_model_file = pretrained_model_dir + self._encoding["model"]+".pt"
         if not os.path.isfile(pretrained_model_file):
             pretrained_model_file = self._encoding["model"]

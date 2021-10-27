@@ -80,16 +80,18 @@ def generate_random_sequences(
     length: int,
     number: int,
     alphabet: Sequence[str],
+    rng,
 ) -> List[str]:
     """Generate random sequences of particular length."""
     return [
-        "".join([np.random.choice(alphabet) for _ in range(length)]) for _ in range(number)
+        "".join([rng.choice(alphabet) for _ in range(length)]) for _ in range(number)
     ]
 
 def generate_random_mutant(
     sequence: str,
     mu: float,
     alphabet: Sequence[str],
+    rng,
 ) -> str:
     """
     Generate a mutant of `sequence` where each residue mutates with probability `mu`.
@@ -107,8 +109,8 @@ def generate_random_mutant(
     """
     mutant = []
     for s in sequence:
-        if np.random.rand() < mu:
-            mutant.append(np.random.choice(alphabet))
+        if rng.rand() < mu:
+            mutant.append(rng.choice(alphabet))
         else:
             mutant.append(s)
     return "".join(mutant)
