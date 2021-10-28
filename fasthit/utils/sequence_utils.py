@@ -109,7 +109,7 @@ def generate_random_mutant(
     """
     mutant = []
     for s in sequence:
-        if rng.rand() < mu:
+        if rng.random() < mu:
             mutant.append(rng.choice(alphabet))
         else:
             mutant.append(s)

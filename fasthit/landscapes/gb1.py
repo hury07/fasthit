@@ -146,12 +146,6 @@ def registry() -> Dict[str, Dict]:
         "KVGF",
         "MRGM",
     ]
-    with_imputed_max = [
-        "ANCA",
-        "FWCA",
-        "FWAA",
-        "FWLG",
-    ]
     wild_type = [
         "VDGV",
     ]
@@ -170,7 +164,7 @@ def registry() -> Dict[str, Dict]:
                 "search_space": "V39,D40,G41,V54",
             },
             "starts": with_imputed,
-            #"starts": wild_type,
+            "starts_wt": wild_type,
         },
     }
 

@@ -117,6 +117,7 @@ def make_explorer(
             starting_sequence=start_seq,
             alphabet=alphabet,
             log_file=log_file,
+            seed=kwargs["seed"],
         )
     elif name == "adalead":
         explorer = fasthit.explorers.Adalead(
@@ -128,6 +129,7 @@ def make_explorer(
             starting_sequence=start_seq,
             alphabet=alphabet,
             log_file=log_file,
+            seed=kwargs["seed"],
         )
     elif name == "mlde":
         explorer = fasthit.explorers.MLDE(
@@ -150,7 +152,9 @@ def make_explorer(
             starting_sequence=start_seq,
             alphabet=alphabet,
             log_file=log_file,
-            proposal_func=kwargs["ac_func"],
+            seed=kwargs["seed"],
+            util_func=kwargs["util_func"],
+            uf_param=kwargs["uf_param"],
         )
     elif name == "bo_evo":
         explorer = fasthit.explorers.bo.BO_EVO(
@@ -171,7 +175,7 @@ def make_explorer(
     return explorer
 
 def main():
-    seeds = [42] #[0, 12, 123, 1234, 12345] # [42]
+    seeds = [0]#[0, 12, 123, 1234, 12345]
     rounds = 10
     expmt_queries_per_round = 384
     model_queries_per_round = 3200
@@ -179,7 +183,7 @@ def main():
     landscape_names = ["gb1:with_imputed"]
     # "rna:L14_RNA1", "rna:L50_RNA1", "rna:L100_RNA1", "rna:C20_L100_RNA1+2",
     # "rosetta:3msi", "gb1:with_imputed"
-    encodings = ["onehot"]
+    encodings = ["esm-1v"]
     # "onehot",
     # "georgiev",
     # "transformer", "unirep", "trrosetta",
@@ -195,9 +199,9 @@ def main():
     explorer_names = ["bo_evo"]
     # "random", "adalead", "bo_evo", "bo_enu",
     # "mlde", "rl"
-    bo_util_funcs = ["LCB"]
+    bo_util_funcs = ["UCB"]
     # "UCB", "LCB", "EI", "PI", "TS"
-    bo_uf_params = [0.1]
+    bo_uf_params = [0.2]
     
 
     for cur_iter in itertools.product(
@@ -238,7 +242,6 @@ def main():
                 log_file = (
                     f"runs_{type_name}/{spec_name}/"
                     + f"{explorer_name}/{encoding}/{model_name}/"
-                    #+ f"{bo_util_func}_{bo_uf_param}"
                     + f"test"
                     + f"/run{k}.csv"
                 )
@@ -248,7 +251,7 @@ def main():
                     expmt_queries_per_round, model_queries_per_round, log_file,
                     **kwargs
                 )
-                explorer.run(landscape, verbose=True)#, init_seqs_file="inputs/gb1/init_seqs.csv")
+                explorer.run(landscape, verbose=False)#, init_seqs_file="data/gb1/init_seqs.csv")
                 del explorer, model
                 torch.cuda.empty_cache()
 

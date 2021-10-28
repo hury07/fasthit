@@ -25,7 +25,7 @@ class MLDE(fasthit.Explorer):
         landscape: fasthit.Landscape,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        seed: Optional[int] = 42,
+        seed: Optional[int] = 0,
     ):
         name = f"MLDE_model={model}"
 

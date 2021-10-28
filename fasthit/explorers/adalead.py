@@ -31,7 +31,7 @@ class Adalead(fasthit.Explorer):
         starting_sequence: str,
         log_file: Optional[str] = None,
         alphabet: str = s_utils.AAS,
-        seed: Optional[int] = 42,
+        seed: Optional[int] = 0,
         mu: int = 1,
         recomb_rate: float = 0,
         threshold: float = 0.05,

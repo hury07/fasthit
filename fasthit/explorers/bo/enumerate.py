@@ -29,9 +29,9 @@ class BO_ENU(fasthit.Explorer):
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        seed: Optional[int] = 42,
-        util_func: str = "UCB",
-        uf_param: float = 0.,
+        seed: Optional[int] = 0,
+        util_func: str = "LCB",
+        uf_param: float = 0.1,
         eval_batch_size: int = 256,
     ):
         """Initialize the explorer."""

@@ -136,6 +136,7 @@ class Explorer(abc.ABC):
             verbose: Whether to print output or not.
 
         """
+        round = 0
         self._model.cost = 0
 
         # Metadata about run that will be used for logging purposes
@@ -151,30 +152,43 @@ class Explorer(abc.ABC):
         }
 
         # Initial sequences and their scores
-        if init_seqs_file is None:
-            init_seqs = [self._starting_sequence]
-        else:
+        measured_data = pd.DataFrame(
+            {
+                "sequence": self._starting_sequence,
+                "model_score": np.nan,
+                "true_score": landscape.get_fitness([self._starting_sequence]),
+                "round": round,
+                "model_cost": 0,
+                "measurement_cost": 1,
+            }
+        )
+        self._log(measured_data, metadata, round, verbose, time.time())
+        
+        if init_seqs_file is not None:
             assert init_seqs_file.endswith(".csv")
             data = pd.read_csv(init_seqs_file)
             init_seqs = data["Variants"].to_numpy()
+            round = 1
 
-        measured_data = pd.DataFrame(
-            {
-                "sequence": init_seqs,
-                "model_score": np.nan,
-                "true_score": landscape.get_fitness(init_seqs),
-                "round": 0,
-                "model_cost": self._model.cost,
-                "measurement_cost": len(init_seqs),
-            }
-        )
+            measured_data = measured_data.append(
+                pd.DataFrame(
+                    {
+                        "sequence": init_seqs,
+                        "model_score": np.nan,
+                        "true_score": landscape.get_fitness(init_seqs),
+                        "round": round,
+                        "model_cost": 0,
+                        "measurement_cost": len(init_seqs),
+                    }
+                )
+            )
+            self._log(measured_data, metadata, round, verbose, time.time())
         training_data = measured_data
-        self._log(measured_data, metadata, 0, verbose, time.time())
-
+        
         # For each round, train model on available data, propose sequences,
         # measure them on the true landscape, add to available data, and repeat.
         range_iterator = range if verbose else tqdm.trange
-        for r in range_iterator(1, self._rounds + 1):
+        for r in range_iterator(round + 1, self._rounds + 1):
             round_start_time = time.time()
 
             encodings = self._encoder.encode(training_data["sequence"].to_list())

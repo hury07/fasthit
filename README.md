@@ -46,6 +46,7 @@ Demos. are given in folder `examples`.
 2. ProtTrans
     ```console
     pip install transformers
+    pip install sentencepiece
     ```
 3. TAPE
     ```console

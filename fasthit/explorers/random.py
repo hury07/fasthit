@@ -29,7 +29,7 @@ class Random(fasthit.Explorer):
         starting_sequence: str,
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
-        seed: Optional[int] = 42,
+        seed: Optional[int] = 0,
         mu: float = 1,
         elitist: bool = False,
     ):
