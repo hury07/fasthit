@@ -33,12 +33,13 @@ class EXP(fasthit.Landscape):
         self._fitness_file = fitness_csv
         self._sequences = {}
         self._last_time = None
-        
+
         self._wt = str(SeqIO.read(wt_fasta, format="fasta").seq)
         if search_space is not None:
             combo = search_space.split(",")
             self._combo_protein_idxs = [int(idxs[1:]) for idxs in combo]
-            self._combo_python_idxs = [idxs - 1 for idxs in self._combo_protein_idxs]
+            self._combo_python_idxs = [
+                idxs - 1 for idxs in self._combo_protein_idxs]
             temp_seq = [idxs[0] for idxs in combo]
             assert all([
                 self._wt[self._combo_python_idxs[i]] == temp_seq[i] for i in range(len(temp_seq))
@@ -53,22 +54,22 @@ class EXP(fasthit.Landscape):
             seqs.to_csv(f, index=False)
 
     def _read_fitness(self):
-        while(True):
-            if (self._last_time is None
-                or os.path.getmtime(self._fitness_file) > self._last_time
-            ):
-                self._last_time = os.path.getmtime(self._fitness_file)
-                ###
-                data = pd.read_csv(self._fitness_file)
-                measured_seqs = set(data["Variants"])
-                interset_seqs = measured_seqs.intersection(self._proposed_seqs)
-                if len(interset_seqs) == len(self._proposed_seqs):
-                    break
-                else:
-                    print((
-                        f"There exist proposed sequences that are not measured "
-                        + f"or not given in fitness file: \"{self._fitness_file}\"."
-                    ))
+        while True:
+            if self._last_time is not None and os.path.getmtime(self._fitness_file) <= self._last_time:
+                time.sleep(1)
+                continue
+            self._last_time = os.path.getmtime(self._fitness_file)
+            ###
+            data = pd.read_csv(self._fitness_file)
+            measured_seqs = set(data["Variants"])
+            interset_seqs = measured_seqs.intersection(self._proposed_seqs)
+            if len(interset_seqs) == len(self._proposed_seqs):
+                break
+            else:
+                print((
+                    f"There exist proposed sequences that are not measured "
+                    + f"or not given in fitness file: \"{self._fitness_file}\"."
+                ))
             time.sleep(1)
         self._sequences.update(zip(data["Variants"], data["Fitness"]))
 
@@ -80,19 +81,19 @@ class EXP(fasthit.Landscape):
             [self._sequences[seq] for seq in sequences],
             dtype=np.float32
         )
-    
+
     @property
     def wt(self):
         return self._wt
-    
+
     @property
     def combo_protein_idxs(self):
         return self._combo_protein_idxs
-    
+
     @property
     def combo_python_idxs(self):
         return self._combo_python_idxs
-    
+
     @property
     def explored_space_size(self):
         return len(self._sequences)

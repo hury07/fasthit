@@ -2,17 +2,17 @@
 from typing import Sequence
 
 import numpy as np
-
-import fasthit
+from fasthit import Encoder
 from fasthit.utils import sequence_utils as s_utils
 
-class OneHot(fasthit.Encoder):
+
+class OneHot(Encoder):
     def __init__(self, alphabet: str):
         super().__init__("onehot", alphabet, len(alphabet))
 
     def encode(self, sequences: Sequence[str]) -> np.ndarray:
         ### [bsz, seq_length, n_features]
-        return np.array(
-            [s_utils.string_to_one_hot(seq, self.alphabet) for seq in sequences],
-            dtype=np.float32,
-        )
+        encoding_stack = list(map(lambda seq: s_utils.string_to_one_hot(
+            seq, self.alphabet), sequences))
+
+        return np.stack(encoding_stack, axis=0).astype(np.float32)

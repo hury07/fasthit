@@ -27,32 +27,32 @@ class Model(fasthit.Landscape, abc.ABC):
         pass
 
 
-class LandscapeAsModel(Model):
-    """
-    This simple class wraps a `fasthit.Landscape` in a `fasthit.Model` to allow running
-    experiments against a perfect model.
+# class LandscapeAsModel(Model):
+#     """
+#     This simple class wraps a `fasthit.Landscape` in a `fasthit.Model` to allow running
+#     experiments against a perfect model.
 
-    This class's `_fitness_function` simply calls the landscape's `_fitness_function`.
-    """
+#     This class's `_fitness_function` simply calls the landscape's `_fitness_function`.
+#     """
 
-    def __init__(self, landscape: fasthit.Landscape):
-        """
-        Create a `fasthit.Model` out of a `fasthit.Landscape`.
+#     def __init__(self, landscape: fasthit.Landscape):
+#         """
+#         Create a `fasthit.Model` out of a `fasthit.Landscape`.
 
-        Args:
-            landscape: Landscape to wrap in a model.
+#         Args:
+#             landscape: Landscape to wrap in a model.
 
-        """
-        super().__init__(f"LandscapeAsModel={landscape.name}")
-        self._landscape = deepcopy(landscape)
+#         """
+#         super().__init__(f"LandscapeAsModel={landscape.name}")
+#         self._landscape = deepcopy(landscape)
 
-    def _fitness_function(self, sequences: List[str]) -> np.ndarray:
-        return self.landscape._fitness_function(sequences)
+#     def _fitness_function(self, sequences: List[str]) -> np.ndarray:
+#         return self.landscape._fitness_function(sequences)
 
-    def train(self, sequences: List[str], labels: List[Any]):
-        """No-op."""
-        pass
-    
-    @property
-    def landscape(self):
-        return self._landscape
+#     def train(self, sequences: List[str], labels: List[Any]):
+#         """No-op."""
+#         pass
+
+#     @property
+#     def landscape(self):
+#         return self._landscape
