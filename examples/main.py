@@ -131,17 +131,6 @@ def make_explorer(
             log_file=log_file,
             seed=kwargs["seed"],
         )
-    elif name == "mlde":
-        explorer = fasthit.explorers.MLDE(
-            encoder,
-            model,
-            rounds=4,
-            expmt_queries_per_round=bz_expmt,
-            model_queries_per_round=bz_model,
-            starting_sequence=start_seq,
-            alphabet=alphabet,
-            log_file=log_file,
-        )
     elif name == "bo_enu":
         explorer = fasthit.explorers.bo.BO_ENU(
             encoder,

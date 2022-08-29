@@ -15,7 +15,7 @@ Demos. are given in folder `examples`.
 2. (Recommend) Set conda environment use file `environment.yaml`.
     ```console
     conda env create -f environment.yaml
-    conda activate fast-hit
+    conda activate fasthit
     ```
 3. Install fast-hit using `pip`.
     ```console

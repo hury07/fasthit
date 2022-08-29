@@ -124,6 +124,9 @@ class ESM(Encoder):
             embeddings[idx] = unencoded[i]
         return embeddings
 
+    def encode(self, sequences: Sequence[str]) -> np.ndarray:
+        return self.encode_func(sequences, self._embed, None)
+
     @torch.no_grad()
     def _embed(
         self,

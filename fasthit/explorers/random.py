@@ -84,10 +84,12 @@ class Random(fasthit.Explorer):
         new_seqs = sorted(new_seqs)
         encodings = self.encoder.encode(new_seqs)
         preds = self.model.get_fitness(encodings)
+
         if self._elitist:
-            idxs = np.argsort(preds)[: -self.expmt_queries_per_round-1 : -1]
+            idxs = np.argsort(preds)[: -self.expmt_queries_per_round-1: -1]
         else:
-            idxs = np.random.randint(0, len(new_seqs), size=self.expmt_queries_per_round)
+            idxs = np.random.randint(
+                0, len(new_seqs), size=self.expmt_queries_per_round)
         return measured_sequences, np.array(new_seqs)[idxs], preds[idxs]
     """
     def get_training_data(
@@ -103,6 +105,7 @@ class Random(fasthit.Explorer):
         sampled_seqs = filtered_seqs.loc[idxs]
         return sampled_seqs
     """
+
     def get_training_data(
         self,
         measured_sequences: pd.DataFrame,

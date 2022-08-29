@@ -170,7 +170,10 @@ class ESMMsa(ESM):
         msa_depth = min(len(dist), msa_depth)
         sort_order = np.argsort(dist)[:-msa_depth-1:-1]
         return [(label_ref, seq_ref)] + [(labels[idx], seqs[idx]) for idx in sort_order]
-
+    
+    def encode(self, sequences: Sequence[str]) -> np.ndarray:
+        return self.encode_func(sequences, self._embed_msa, None)
+    
     def _embed_msa(
         self,
         data: Sequence[Tuple[Sequence[str], Sequence[str]]],
