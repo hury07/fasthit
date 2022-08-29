@@ -132,9 +132,11 @@ class Adalead(fasthit.Explorer):
             ###
             encodings = self.encoder.encode(children)
             fitnesses = self.model.get_fitness(encodings)
-            self._sequences.update(zip(children, fitnesses))
+
             nodes = [(idx, child) for idx, child, fitness in zip(
                 child_idxs, children, fitnesses) if fitness >= root_fitnesses[idx]]
+
+            self._sequences.update(zip(children, fitnesses))
 
     def propose_sequences(
         self,
@@ -155,7 +157,7 @@ class Adalead(fasthit.Explorer):
         previous_model_cost = self.model.cost
         while self.model.cost - previous_model_cost < self.model_queries_per_round:
             # generate recombinant mutants
-            for i in range(self._rho):
+            for _ in range(self._rho):
                 parents = self._recombine_population(parents)
             for i in range(0, len(parents), self._eval_batch_size):
                 # Here we do rollouts from each parent (root of rollout tree)

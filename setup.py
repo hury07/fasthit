@@ -1,7 +1,7 @@
 import os
 from setuptools import setup, find_packages
 
-### get dependence package list
+# get dependence package list
 _filedir = os.path.dirname(os.path.abspath(__file__))
 requirementPath = _filedir + '/requirements.txt'
 requirments = []
@@ -26,7 +26,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     install_requires=requirments,
     extras_require={
         "esm": [
@@ -37,13 +37,6 @@ setup(
         ],
     },
     include_package_data=True,
-    package_data={
-        "landscapes": [
-            "landscapes/data/rosetta/*",
-            "landscapes/data/tf_binding/*",
-            "landscapes/data/gb1/*",
-        ]
-    },
     classifiers=[
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3",

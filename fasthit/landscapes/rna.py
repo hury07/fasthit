@@ -83,12 +83,13 @@ class RNABinding(fasthit.Landscape):
                 start = self._conserved_region["start"]
                 pattern = self._conserved_region["pattern"]
                 # If region not conserved, fitness is 0
-                if seq[start : start + len(pattern)] != pattern:
+                if seq[start: start + len(pattern)] != pattern:
                     fitnesses.append(0)
                     continue
             # Energy is sum of binding energies across all targets
             energies = np.array(
-                [RNA.duplexfold(target, seq).energy for target in self._targets]
+                [RNA.duplexfold(
+                    target, seq).energy for target in self._targets]
             )
             fitness = (energies / self._norm_values).mean()
             fitnesses.append(fitness)
@@ -105,6 +106,7 @@ class RNABinding(fasthit.Landscape):
             min_energies.append(energy * self._seq_length / len(target))
 
         return np.array(min_energies)
+
 
 def registry():
     """
