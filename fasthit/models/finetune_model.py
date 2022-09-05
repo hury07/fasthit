@@ -8,9 +8,8 @@ import torch.optim as optim
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from esm import pretrained
-
 from fasthit.encoders.esm import encodings
+from fasthit.error import EsmImportError
 from fasthit.models.mlp import MLPModel
 
 from .torch_model import TorchModel
@@ -106,6 +105,11 @@ class FinetuneModel(nn.Module):
         activiation_func: nn.Module = nn.ReLU(),
         drop_prob: float = 0.,
     ):
+        try:
+            from esm import pretrained
+        except ImportError:
+            raise EsmImportError
+        
         super().__init__()
         self.pretrained_model_exprs = pretrained_model_exprs
         self.target_protein_idxs = [idx + 1 for idx in target_python_idxs]
