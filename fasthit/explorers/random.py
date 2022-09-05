@@ -91,20 +91,6 @@ class Random(fasthit.Explorer):
             idxs = np.random.randint(
                 0, len(new_seqs), size=self.expmt_queries_per_round)
         return measured_sequences, np.array(new_seqs)[idxs], preds[idxs]
-    """
-    def get_training_data(
-        self,
-        measured_sequences: pd.DataFrame,
-    ) -> pd.DataFrame:
-        eval_size = min(len(measured_sequences), self.model_queries_per_round)
-        sorted_df = measured_sequences.sort_values(
-            by=["true_score"], ascending=False
-        ).reset_index(drop=True)
-        filtered_seqs = sorted_df.loc[:eval_size-1]
-        idxs = np.random.choice(eval_size, self.training_data_size, replace=False)
-        sampled_seqs = filtered_seqs.loc[idxs]
-        return sampled_seqs
-    """
 
     def get_training_data(
         self,
