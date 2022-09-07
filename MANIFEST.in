@@ -1,3 +1,4 @@
 include fasthit/landscapes/data/gb1/*
 include fasthit/landscapes/data/rosetta/*
 include fasthit/landscapes/data/tf_binding/*
+include fasthit/landscapes/data/phoq/*
