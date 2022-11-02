@@ -14,14 +14,7 @@ class GB1(fasthit.Landscape):
 
     We use experimental and imputed data from Wu et al. (2016).
     """
-    _wt = (
-        "MTYKLILNGK"
-        "TLKGETTTEA"
-        "VDAATAEKVF"
-        "KQYANDNGVD"
-        "GEWTYDDATK"
-        "TFTVTE"
-    )
+    _wt = "MTYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE"
     # Variants (V39, D40, G41 and V54)
     # Fitness_wt: VDGV - 1.0
     # Fitness_max (measured): FWAA - 8.76196565571
@@ -33,26 +26,43 @@ class GB1(fasthit.Landscape):
         """
         super().__init__(name="GB1_combo")
 
-        # Load GB1 measurements from file
-        measured_data = pd.read_csv(
-            os.path.join(
-                _filedir, "data/gb1/elife-16965-supp1-v4.csv"
-            )
-        )
-        measured_data = measured_data[["Variants", "Fitness"]]
-        if data_used == "with_imputed":
-            imputed_data = pd.read_csv(
+        if data_used == "trainset":
+            data = pd.read_csv(
                 os.path.join(
-                    _filedir, "data/gb1/elife-16965-supp2-v4.csv"
+                    _filedir, "data/gb1/trainset.csv"
                 )
             )
-            imputed_data.columns = ["Variants", "Fitness"]
-            data = pd.concat([measured_data, imputed_data])
-        elif data_used == "only_measured":
-            data = measured_data
-
-        score = data["Fitness"] # WT score is set to 1.
-        norm_score = (score - score.min()) / (score.max() - score.min())
+            norm_score = data["Fitness"]
+        elif data_used == "testset":
+            data = pd.read_csv(
+                os.path.join(
+                    _filedir, "data/gb1/testset.csv"
+                )
+            )
+            norm_score = data["Fitness"]
+        else:
+            # Load GB1 measurements from file
+            measured_data = pd.read_csv(
+                os.path.join(
+                    _filedir, "data/gb1/elife-16965-supp1-v4.csv"
+                )
+            )
+            measured_data = measured_data[["Variants", "Fitness"]]
+            if data_used == "measured_only":
+                data = measured_data
+            else:
+                imputed_data = pd.read_csv(
+                    os.path.join(
+                        _filedir, "data/gb1/elife-16965-supp2-v4.csv"
+                    )
+                )
+                imputed_data.columns = ["Variants", "Fitness"]
+                if data_used == "imputed_only":
+                    data = imputed_data
+                elif data_used == "with_imputed":
+                    data = pd.concat([measured_data, imputed_data])
+            score = data["Fitness"] # WT score is set to 1.
+            norm_score = (score - score.min()) / (score.max() - score.min())
 
         self._sequences = dict(zip(data["Variants"], norm_score))
 
@@ -67,7 +77,7 @@ class GB1(fasthit.Landscape):
 
     def _fitness_function(self, sequences: Sequence[str]) -> np.ndarray:
         return np.array(
-            [self._sequences[seq] for seq in sequences],
+            [self._sequences.get(seq, np.nan) for seq in sequences],
             dtype=np.float32
         )
     
@@ -104,68 +114,106 @@ def registry() -> Dict[str, Dict]:
     Returns:
         Problems in the registry.
     """
-    only_measured = [
-        "FWRA",
-        "FWWA",
-        "FWSA",
-        "FEAA",
-        "KWAY",
-        "FTAY",
-        "FCWA",
-        "MWSA",
-        "FHSA",
-        "KLNA",
-        "SNVA",
-        "IYAN",
-        "WEGA",
-        "LLLA",
-        "EVWL",
-        "LFDI",
-        "VYFL",
-        "YFCI",
-        "VYVG",
-    ]
-
-    with_imputed = [
-        "AHNA",
-        "CHCA",
-        "NHCA",
-        "ATRA",
-        "KAHC",
-        "AHHK",
-        "CRCA",
-        "AHGC",
-        "WHRH",
-        "GSCQ",
-        "AGFR",
-        "YYCS",
-        "AMLG",
-        "SIDW",
-        "CMPW",
-        "VRFM",
-        "KVGF",
-        "MRGM",
-    ]
     wild_type = [
         "VDGV",
     ]
+    measured_only = [
+        "FWAL",
+        "FWAM",
+        "FWAI",
+        "FEAA",
+        "RNAA",
+        "QWFA",
+        "FWLV",
+        "ECAA",
+        "FDGA",
+        "FMCV",
+        "LWGG",
+        "MFGA",
+        "STCA",
+        "MCMA",
+        "TFGS",
+        "QRCC",
+        "MIGS",
+        "ITLG",
+        "HSFG",
+    ]
+    with_imputed = [
+        "AHCF",
+        "PHCA",
+        "AHLA",
+        "AHGA",
+        "NHCA",
+        "HHCM",
+        "PNCA",
+        "AAFA",
+        "KHCG",
+        "ADAA",
+        "FACV",
+        "VAYA",
+        "NHGL",
+        "TKAA",
+        "LACC",
+        "DCQF",
+        "MVAL",
+        "MSGT",
+        "YCGT",
+        "LRAG",
+    ]
+    trainset = [
+        "FWAL",
+        "FWAM",
+        "FWAI",
+        "FEAA",
+        "RNAA",
+        "RIAA",
+        "FWLV",
+        "ECAA",
+        "FDGA",
+        "FMGL",
+        "LWGQ",
+        "MWGS",
+        "STCA",
+        "MCMA",
+        "TFGY",
+        "QSCC",
+        "MKGM",
+        "IVYG",
+        "ICCG",
+    ]
+    testset = []
 
     problems = {
-        "only_measured": {
+        "measured_only": {
             "params": {
-                "data_used": "only_measured",
+                "data_used": "measured_only",
                 "search_space": "V39,D40,G41,V54",
             },
-            "starts": only_measured,
+            "wt_only": wild_type,
+            "starts": measured_only,
         },
         "with_imputed": {
             "params": {
                 "data_used": "with_imputed",
                 "search_space": "V39,D40,G41,V54",
             },
+            "wt_only": wild_type,
             "starts": with_imputed,
-            "starts_wt": wild_type,
         },
+        "trainset": {
+            "params": {
+                "data_used": "trainset",
+                "search_space": "V39,D40,G41,V54",
+            },
+            "starts": trainset,
+        },
+        "testset": {
+            "params": {
+                "data_used": "testset",
+                "search_space": "V39,D40,G41,V54",
+            },
+            "starts": testset,
+        }
     }
 
     return problems

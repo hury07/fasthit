@@ -1,0 +1,81 @@
+#######################
+### evaluation mode ###
+#######################
+eval_mode = false
+# false, true
+
+testset_path = ''
+# .csv file path
+
+#################
+### I\O setup ###
+#################
+output_dir = "data/runs"
+
+#######################
+### landscape setup ###
+#######################
+landscape_names = ["gb1:with_imputed"]
+# "gb1:measured_only", "gb1:with_imputed",
+# "phoq:measured_only",
+# "nk:N4K0_exp_zipf_hole0.3", "nk:N4K1_exp_zipf_hole0.3",
+# "nk:N4K2_exp_zipf_hole0.3", "nk:N4K3_exp_zipf_hole0.3",
+# "nk:N5K1_exp_zipf_hole0.3", "nk:N6K1_exp_zipf_hole0.3",
+# "nk:N4K1_standard", "nk:N4K1_exp", "nk:N4K1_exp_zipf",
+# "nk:N4K0_standard", "nk:N4K0_exp", "nk:N4K0_exp_zipf",
+
+starts = "starts"
+# starts, starts_wt
+
+####################
+### method setup ###
+####################
+
+### explorer ###
+explorer_names = ["bo_evo"]
+# "random", "random_ms", "adalead", "bo_evo", "bo_enu",
+
+bo_util_funcs = ["UCB"]
+# "UCB", "LCB", "EI", "PI", "TS"
+bo_uf_params = [0.2]
+
+### batch size ###
+expmt_queries_per_round = [384]
+# 24,   48,  96,  192,  384,  768,  1536
+
+model_queries_per_round = [3072]
+# 192, 384, 768, 1536, 3072, 6144, 12288
+
+### input encoding strategy ###
+encodings = ["onehot"]
+# "onehot",
+# "georgiev",
+# "unirep",
+# "transformer",
+# "esm-1b", "esm-1v",
+# "prot_bert_bfd", "prot_t5_xl_uniref50",
+
+### fitness model ###
+model_names = ["gpr"]
+# "linear", "randomforest",
+# "mlp", "cnn",
+# "gpr", "rio",
+# "ensemble",
+# "finetune"
+
+gp_kernels = ["RBF"]
+
+warm_start = ["warm"]
+# "cool", "warm"
+
+########################
+### simulation setup ###
+########################
+verbose = false
+# true, false
+
+seeds = [1, 12, 123, 1234, 12345]
+# 1, 12, 123, 1234, 12345
+
+rounds = [5]
+# 64,   32,   16,   10,   8,    5,    4,    2,    1

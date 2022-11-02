@@ -56,8 +56,3 @@ Demos. are given in folder `examples`.
     pip install .
     ```
     Extra hhsuite databases are required for Rosetta
-### Explorers
-1. DI-engine (reinforcement learning engine)
-    ```console
-    pip install DI-engine
-    ```
