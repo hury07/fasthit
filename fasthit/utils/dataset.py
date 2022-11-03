@@ -1,19 +1,13 @@
 from copy import copy
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Union
 from typing_extensions import Self
 import torch
 
 from torch.utils.data import Dataset
 
 
-def collate_batch(batch_list):
-    assert type(batch_list) == list, f"Error"
-    batch_size = len(batch_list)
-    combo_batch = torch.cat([item[0]
-                            for item in batch_list]).reshape(batch_size, -1)
-    temp_seqs = torch.cat([item[1] for item in batch_list]
-                          ).reshape(batch_size, -1)
-    return combo_batch, temp_seqs
+def collate_batch(batch_list: Sequence[Union[Tuple, Sequence[Tuple]]]):
+    return batch_list
 
 
 class SequenceData(Dataset):
@@ -25,7 +19,7 @@ class SequenceData(Dataset):
 
     @staticmethod
     def format(residue_chars, target_python_idxs, wild_type) -> Tuple[str]:
-        ret = ['' for _ in range(len(residue_chars))]
+        ret = []
         for chars in residue_chars:
             seq_list = copy(wild_type)
             for idx, c in zip(target_python_idxs, chars):

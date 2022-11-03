@@ -83,16 +83,17 @@ class TAPE(Encoder):
             len(sequences)) if idx not in encoded_idx]
         unencoded_seqs = [sequences[idx] for idx in unencoded_idx]
         ###
-        extracted_embeddings: List[np.ndarray] = [
-            None for _ in range(len(dataloader))]
+        
 
         # Loop over the number of batches
         dataset = SequenceData(
             unencoded_seqs, self._target_python_idxs, self._wt_list)
         dataloader = DataLoader(
-            dataset, batch_size=self.batch_size, shuffle=False,
-            collate_fn=collate_fn)
-
+            dataset, batch_size=self.batch_size, shuffle=False)
+        
+        extracted_embeddings: List[np.ndarray] = [
+            None for _ in range(len(dataloader))]
+        
         for i, (combo_batch, temp_seqs) in enumerate(dataloader):
             extracted_embeddings[i] = embed(temp_seqs, combo_batch)
 
@@ -106,7 +107,7 @@ class TAPE(Encoder):
         return embeddings
 
     def encode(self, sequences: Sequence[str]) -> np.ndarray:
-        self.encode_func(sequences, self._embed, collate_batch)
+        return self.encode_func(sequences, self._embed, collate_batch)
 
     @torch.no_grad()
     def _embed(

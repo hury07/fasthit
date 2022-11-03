@@ -11,7 +11,7 @@ import pandas as pd
 import torch
 from fasthit import Encoder
 from fasthit.error import EsmImportError
-from fasthit.utils.dataset import SequenceData
+from fasthit.utils.dataset import SequenceData, collate_batch
 from torch.utils.data import DataLoader
 
 try:
@@ -60,7 +60,7 @@ class ESM(Encoder):
         self._encoding = encodings.loc[encoding]
         self._target_python_idxs = target_python_idxs
         self._embeddings: Dict[str, np.ndarray] = {}
-        self.wt_list = list(wt_seq)
+        self._wt_list = list(wt_seq)
 
         self._device = torch.device(
             'cuda:0' if torch.cuda.is_available() and not nogpu else 'cpu')
@@ -107,11 +107,11 @@ class ESM(Encoder):
         ###
         extracted_embeddings: List[np.ndarray] = [
             None for _ in range(n_batches)]
-        wt_list = list(self._wt_seq)
+
         dataset = SequenceData(
             unencoded_seqs, self._target_python_idxs, self._wt_list)
         dataloader = DataLoader(
-            dataset, batch_size=self.batch_size, shuffle=False)
+            dataset, batch_size=self.batch_size, shuffle=False, collate_fn=collate_batch)
 
         for i, data in enumerate(dataloader):
             extracted_embeddings[i] = embed(data)
@@ -125,7 +125,7 @@ class ESM(Encoder):
         return embeddings
 
     def encode(self, sequences: Sequence[str]) -> np.ndarray:
-        return self.encode_func(sequences, self._embed, None)
+        return self.encode_func(sequences, self._embed)
 
     @torch.no_grad()
     def _embed(
