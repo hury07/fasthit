@@ -23,9 +23,9 @@ class MCMC(fasthit.Explorer):
         alphabet: str = s_utils.AAS,
         log_file: Optional[str] = None,
         seed: Optional[int] = 0,
-        mu: Optional[float] = None,
-        temperature: float = 0.01,
-        batch_size: int = 8,
+        mu: Optional[float] = 1.2,
+        temperature: float = 0.06,
+        batch_size: int = 10,
     ):
         """
         """
@@ -92,7 +92,7 @@ class MCMC(fasthit.Explorer):
                     if state[pos, res] == 0:
                         pos_changes[pos].append((pos, res))
             action = []
-            m = self._rng.poisson(self._rng.uniform(1, 1.2))
+            m = self._rng.poisson(self._rng.uniform(1, self._mu))
             m = max(1, m)
             m = min(m, self._seq_len)
             for pos in self._rng.choice(range(self._seq_len), m, replace=False):
